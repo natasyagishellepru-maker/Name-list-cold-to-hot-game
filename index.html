@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>Cold to Hot — Legacy Makers</title>
+<title>Cold to Hot — Legacy</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,500;0,600;0,700;1,500&family=Inter:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
 <style>
@@ -108,6 +108,18 @@
   .toast.show{opacity:1;}
   .shared-note{ font-size:11px; color:#8a8f99; text-align:center; margin-top:6px; }
   .big-timer{ font-family:'Space Mono',monospace; font-size:38px; font-weight:700; text-align:center; color:var(--navy); margin:6px 0; }
+  .session-note{ font-size:12px; color:#8a8f99; text-align:center; margin-bottom:10px; }
+  .timer-warning-banner{ text-align:center; font-weight:700; padding:10px; border-radius:12px; margin-bottom:12px; background:#f6c453; color:#241c07; transition:background .3s, color .3s; }
+  .timer-warning-banner.critical{ background:#c0392b; color:#fff; font-size:30px; padding:14px; animation:pulseBeat .9s infinite; }
+  .timer-warning-banner.timeup{ background:#8f1f18; color:#fff; font-size:20px; animation:none; }
+  .timer-pill.warning{ background:#f6c453; color:#241c07; }
+  .timer-pill.critical{ background:#c0392b; color:#fff; animation:pulseBeat .9s infinite; }
+  @keyframes pulseBeat{ 0%{ transform:scale(1); } 50%{ transform:scale(1.06); } 100%{ transform:scale(1); } }
+  .proj-wrap.time-warning .proj-timer-num{ color:#f6c453; }
+  .proj-wrap.time-critical{ animation:pulseBeat .9s infinite; }
+  .proj-wrap.time-critical .proj-timer-num{ color:#ff5b4d; font-size:96px; }
+  .proj-wrap.time-up{ background:#8f1f18; }
+  .proj-wrap.time-up .proj-timer-num{ color:#fff; }
   .admin-lock{ text-align:center; padding:40px 20px; }
   .row-between{display:flex; justify-content:space-between; align-items:center; gap:10px;}
   table.admin-table{width:100%; border-collapse:collapse; font-size:12px;}
@@ -149,7 +161,7 @@
   <header class="top">
     <div class="headrow">
       <div>
-        <p class="eyebrow">Legacy Makers · Latihan Berpasangan</p>
+        <p class="eyebrow">Legacy · Latihan Berpasangan</p>
         <h1 class="title">Cold to Hot</h1>
       </div>
       <div class="head-right">
@@ -206,6 +218,8 @@
       </div>
 
       <div id="game-content" style="display:none;">
+        <div id="game-session-note" class="session-note"></div>
+        <div id="game-timer-warning" class="timer-warning-banner" style="display:none;"></div>
         <div class="scene-card">
           <div class="scene-head">
             <div>
@@ -261,7 +275,7 @@
       <button class="proj-exit" id="btn-exit-projector">Keluar Layar Kelas</button>
       <div class="proj-wrap">
         <div class="proj-top">
-          <span class="proj-eyebrow">Legacy Makers · Cold to Hot</span>
+          <span class="proj-eyebrow">Legacy · Cold to Hot</span>
         </div>
         <h1 class="proj-title">Papan Skor Kelas</h1>
         <div class="proj-timer-box">
@@ -318,8 +332,12 @@
           <div class="card">
             <p class="section-label">Jumlah Persona Aktif Sesi Ini</p>
             <div class="field" style="margin-bottom:10px;">
-              <label>Berapa persona dipakai (dari total <span id="total-persona-count">0</span>)</label>
-              <input type="number" id="admin-active-num" value="15" min="1">
+              <label>Ronde 1 — dipakai (dari total <span id="total-persona-count">0</span>)</label>
+              <input type="number" id="admin-active-num-r1" value="15" min="1">
+            </div>
+            <div class="field" style="margin-bottom:10px;">
+              <label>Ronde 2 — dipakai (dari total <span id="total-persona-count-r2">0</span>)</label>
+              <input type="number" id="admin-active-num-r2" value="15" min="1">
             </div>
             <button class="btn btn-primary btn-sm" id="btn-save-active">Terapkan ke Semua Pemain</button>
           </div>
@@ -628,7 +646,7 @@ function switchScreen(name){
   if(name==='projector'){
     loadProjectorScreen();
     if(projectorInterval) clearInterval(projectorInterval);
-    projectorInterval = setInterval(loadProjectorScreen, 3000);
+    projectorInterval = setInterval(loadProjectorScreen, 1000);
   } else if(projectorInterval){
     clearInterval(projectorInterval);
     projectorInterval = null;
@@ -654,11 +672,45 @@ $all('#round-pick .role-opt').forEach(el=>{
 // default selections
 $('#round-pick .role-opt[data-r="1"]').classList.add('sel');
 
-async function getActiveCount(){
+async function getActiveCount(roundNum){
   try{
-    const r = await storage.get('settings:active-count', true);
+    const r = await storage.get('settings:active-count-round'+roundNum, true);
     return r ? parseInt(r.value) : PERSONAS.length;
   }catch(e){ return PERSONAS.length; }
+}
+
+/* ---------- SHARED PERSONA ORDER (same sequence for every pair, re-shuffled per session) ---------- */
+async function getPersonaOrder(roundNum){
+  const n = Math.max(1, Math.min(await getActiveCount(roundNum), PERSONAS.length));
+  const key = 'settings:persona-order-round'+roundNum;
+  try{
+    const r = await storage.get(key, true);
+    if(r){
+      const arr = JSON.parse(r.value);
+      if(Array.isArray(arr) && arr.length === n && arr.every(id=>PERSONAS.some(p=>p.id===id))) return arr;
+    }
+  }catch(e){}
+  const pool = PERSONAS.slice(0, n).map(p=>p.id);
+  const shuffled = [...pool].sort(()=>Math.random()-0.5);
+  try{ await storage.set(key, JSON.stringify(shuffled), true); }catch(e){}
+  return shuffled;
+}
+
+async function pickScenarioForRound(roundNum){
+  const order = await getPersonaOrder(roundNum);
+  let count = 0;
+  if(state.pairId){
+    try{
+      const existing = await storage.get(pairKey(), true);
+      if(existing){
+        const data = JSON.parse(existing.value);
+        count = (data.rounds||[]).filter(r=>r.round===roundNum).length;
+      }
+    }catch(e){}
+  }
+  const idx = order.length ? count % order.length : 0;
+  const found = PERSONAS.find(p=>p.id===order[idx]);
+  return found || PERSONAS[0];
 }
 
 $('#btn-start-round').addEventListener('click', async ()=>{
@@ -668,11 +720,7 @@ $('#btn-start-round').addEventListener('click', async ()=>{
   if(!state.agentIsP){ showToast("Pilih siapa yang jadi Agent"); return; }
   state.pairId = p1 + " & " + p2; state.p1 = p1; state.p2 = p2;
 
-  const n = await getActiveCount();
-  let pool = PERSONAS.slice(0, Math.max(1, Math.min(n, PERSONAS.length)));
-  if(pool.length===0) pool = PERSONAS;
-
-  state.skenario = pool[Math.floor(Math.random()*pool.length)];
+  state.skenario = await pickScenarioForRound(state.round);
   state.shuffledOptions = [...state.skenario.options].sort(()=>Math.random()-0.5);
   state.optionPick = null;
   state.plusChecked = {}; state.minusChecked = {};
@@ -683,12 +731,17 @@ $('#btn-start-round').addEventListener('click', async ()=>{
 /* ---------- GAME ---------- */
 function agentName(){ return state.agentIsP===1 ? state.p1 : state.p2; }
 function personaName(){ return state.agentIsP===1 ? state.p2 : state.p1; }
+function pairKey(){ return 'pair:' + state.pairId.replace(/\s+/g,'_').toLowerCase(); }
 
 function renderGame(){
   const s = state.skenario;
   $('#game-empty').style.display = s ? 'none' : 'block';
   $('#game-content').style.display = s ? 'block' : 'none';
   if(!s) return;
+
+  getActiveCount(state.round).then(n=>{
+    $('#game-session-note').textContent = 'Ronde ' + state.round + ' · Jumlah persona: ' + n;
+  });
 
   $('#scene-num').textContent = 'SKENARIO #' + s.id;
   $('#scene-ctx').textContent = s.konteks;
@@ -793,24 +846,37 @@ function showResult(){
         <div>🚩 ${r.minusCount} yang perlu dihindari</div>
         ${state.round===1 ? `<div>🎯 ${r.pickedIdeal ? 'Pilihan tepat (+2)' : 'Pilihan bisa lebih baik'}</div>` : ''}
       </div>
+      <div id="save-status" class="shared-note" style="color:rgba(246,241,228,0.75); margin-top:8px;">Menyimpan ke papan skor...</div>
     </div>
-    <button class="btn btn-gold" id="btn-simpan-skor">Simpan ke Papan Skor</button>
-    <button class="btn btn-ghost" id="btn-skenario-baru" style="margin-top:10px;">Tukar Peran / Ronde Baru</button>
+    <button class="btn btn-gold" id="btn-swap-role">🔁 Tukar Peran</button>
+    <button class="btn btn-ghost" id="btn-new-round" style="margin-top:10px;">➡️ Ronde Baru</button>
   `;
-  $('#btn-simpan-skor').addEventListener('click', simpanSkor);
-  $('#btn-skenario-baru').addEventListener('click', ()=>{
+  simpanSkor();
+  $('#btn-swap-role').addEventListener('click', async ()=>{
     state.agentIsP = state.agentIsP===1 ? 2 : 1;
     $all('#role-pick .role-opt').forEach(o=>o.classList.toggle('sel', parseInt(o.dataset.p)===state.agentIsP));
-    switchScreen('setup');
+    state.skenario = await pickScenarioForRound(state.round);
+    state.shuffledOptions = [...state.skenario.options].sort(()=>Math.random()-0.5);
+    state.optionPick = null; state.plusChecked = {}; state.minusChecked = {};
+    renderGame();
+    switchScreen('game');
+  });
+  $('#btn-new-round').addEventListener('click', async ()=>{
+    state.round = state.round===1 ? 2 : 1;
+    $all('#round-pick .role-opt').forEach(o=>o.classList.toggle('sel', parseInt(o.dataset.r)===state.round));
+    state.skenario = await pickScenarioForRound(state.round);
+    state.shuffledOptions = [...state.skenario.options].sort(()=>Math.random()-0.5);
+    state.optionPick = null; state.plusChecked = {}; state.minusChecked = {};
+    renderGame();
+    switchScreen('game');
   });
 }
 
 async function simpanSkor(){
-  const btn = $('#btn-simpan-skor');
-  if(btn){ btn.disabled = true; btn.textContent = 'Menyimpan...'; }
+  const status = $('#save-status');
   try{
     const r = computeScore();
-    const key = 'pair:' + state.pairId.replace(/\s+/g,'_').toLowerCase();
+    const key = pairKey();
     let existing = null;
     try{ existing = await storage.get(key, true); }catch(e){ existing = null; }
     let data = existing ? JSON.parse(existing.value) : { pairId: state.pairId, p1: state.p1, p2: state.p2, rounds: [], total: 0, maxTotal: 0 };
@@ -818,12 +884,10 @@ async function simpanSkor(){
     data.total = data.rounds.reduce((sum,x)=>sum+x.score,0);
     data.maxTotal = data.rounds.reduce((sum,x)=>sum+(x.maxScore||0),0);
     await storage.set(key, JSON.stringify(data), true);
-    showToast("Skor tersimpan di papan kelas!");
-    switchScreen('leaderboard');
+    if(status){ status.textContent = '✓ Tersimpan otomatis di papan skor'; }
   }catch(e){
-    showToast("Gagal simpan skor, cek koneksi");
+    if(status){ status.textContent = '⚠️ Gagal simpan, cek koneksi'; }
     console.error(e);
-    if(btn){ btn.disabled = false; btn.textContent = 'Simpan ke Papan Skor'; }
   }
 }
 
@@ -877,22 +941,43 @@ async function getTimerState(roundNum){
     return r ? JSON.parse(r.value) : null;
   }catch(e){ return null; }
 }
+function computeRemaining(t){
+  if(!t) return null;
+  if(t.running){
+    const elapsed = (Date.now() - t.startedAt)/1000;
+    return Math.max(0, t.durationSec - elapsed);
+  } else if(t.remainingAtPause!==undefined){
+    return t.remainingAtPause;
+  }
+  return null;
+}
 async function refreshTimerDisplay(){
   const roundNum = state.round || 1;
   const t = await getTimerState(roundNum);
-  let display = '--:--';
-  if(t && t.running){
-    const elapsed = (Date.now() - t.startedAt)/1000;
-    const remaining = t.durationSec - elapsed;
-    display = remaining>0 ? fmtTime(remaining) : "00:00";
-  } else if(t && !t.running && t.remainingAtPause!==undefined){
-    display = fmtTime(t.remainingAtPause);
-  }
-  $('#timer-pill').textContent = '⏱ R'+roundNum+' ' + display;
+  const remaining = computeRemaining(t);
+  const display = remaining===null ? '--:--' : fmtTime(remaining);
+
+  const pill = $('#timer-pill');
+  pill.textContent = '⏱ R'+roundNum+' ' + display;
+  pill.classList.remove('warning','critical');
+  const banner = $('#game-timer-warning');
+  if(t && t.running && remaining!==null){
+    if(remaining<=0){
+      pill.classList.add('critical');
+      if(banner){ banner.style.display='block'; banner.className='timer-warning-banner timeup'; banner.textContent='⏰ WAKTU HABIS!'; }
+    } else if(remaining<=3){
+      pill.classList.add('critical');
+      if(banner){ banner.style.display='block'; banner.className='timer-warning-banner critical'; banner.textContent = Math.ceil(remaining); }
+    } else if(remaining<=30){
+      pill.classList.add('warning');
+      if(banner){ banner.style.display='block'; banner.className='timer-warning-banner'; banner.textContent = '⏱ ' + Math.ceil(remaining) + ' detik lagi!'; }
+    } else if(banner){ banner.style.display='none'; }
+  } else if(banner){ banner.style.display='none'; }
+
   const lbTimer = $('#lb-timer');
   if(lbTimer) lbTimer.textContent = display;
 }
-setInterval(refreshTimerDisplay, 2000);
+setInterval(refreshTimerDisplay, 1000);
 
 async function loadProjectorScreen(){
   // pick whichever round timer is currently running; default round 1
@@ -904,13 +989,20 @@ async function loadProjectorScreen(){
   else if(t2 && t2.remainingAtPause){ activeRound = 2; t = t2; }
 
   $('#proj-timer-label').textContent = activeRound===1 ? 'Ronde 1 — Pilihan Jawaban' : 'Ronde 2 — Jawab Bebas';
-  let display = '--:--';
-  if(t && t.running){
-    const elapsed = (Date.now() - t.startedAt)/1000;
-    const remaining = t.durationSec - elapsed;
-    display = remaining>0 ? fmtTime(remaining) : "00:00";
-  } else if(t && !t.running && t.remainingAtPause!==undefined){
-    display = fmtTime(t.remainingAtPause);
+  const remaining = computeRemaining(t);
+  const wrap = $('.proj-wrap');
+  wrap.classList.remove('time-warning','time-critical','time-up');
+  let display = remaining===null ? '--:--' : fmtTime(remaining);
+  if(t && t.running && remaining!==null){
+    if(remaining<=0){
+      display = 'WAKTU HABIS';
+      wrap.classList.add('time-up');
+    } else if(remaining<=3){
+      display = String(Math.ceil(remaining));
+      wrap.classList.add('time-critical');
+    } else if(remaining<=30){
+      wrap.classList.add('time-warning');
+    }
   }
   $('#proj-timer-num').textContent = display;
 
@@ -975,16 +1067,26 @@ $all('.tab2').forEach(tab=>{
 
 async function loadAdminControlSettings(){
   $('#total-persona-count').textContent = PERSONAS.length;
+  $('#total-persona-count-r2').textContent = PERSONAS.length;
   try{
-    const r = await storage.get('settings:active-count', true);
-    $('#admin-active-num').value = r ? r.value : PERSONAS.length;
-  }catch(e){ $('#admin-active-num').value = PERSONAS.length; }
+    const r1 = await getActiveCount(1);
+    $('#admin-active-num-r1').value = r1;
+  }catch(e){ $('#admin-active-num-r1').value = PERSONAS.length; }
+  try{
+    const r2 = await getActiveCount(2);
+    $('#admin-active-num-r2').value = r2;
+  }catch(e){ $('#admin-active-num-r2').value = PERSONAS.length; }
 }
 
 $('#btn-save-active').addEventListener('click', async ()=>{
-  const val = parseInt($('#admin-active-num').value) || PERSONAS.length;
+  const val1 = parseInt($('#admin-active-num-r1').value) || PERSONAS.length;
+  const val2 = parseInt($('#admin-active-num-r2').value) || PERSONAS.length;
   try{
-    await storage.set('settings:active-count', String(val), true);
+    await storage.set('settings:active-count-round1', String(val1), true);
+    await storage.set('settings:active-count-round2', String(val2), true);
+    // regenerate shared persona order for both rounds so the new counts take effect immediately
+    await storage.delete('settings:persona-order-round1');
+    await storage.delete('settings:persona-order-round2');
     showToast("Diterapkan — pemain akan pakai ini di ronde berikutnya");
   }catch(e){ showToast("Gagal menyimpan pengaturan"); }
 });
@@ -1188,7 +1290,9 @@ $('#btn-reset-scores').addEventListener('click', async ()=>{
     for(const k of keys){
       try{ await storage.delete(k); }catch(e){}
     }
-    showToast('Semua skor sudah direset.');
+    try{ await storage.delete('settings:persona-order-round1'); }catch(e){}
+    try{ await storage.delete('settings:persona-order-round2'); }catch(e){}
+    showToast('Semua skor sudah direset. Urutan persona diacak ulang.');
     loadAdminTable();
   }catch(e){
     showToast('Gagal reset, cek koneksi');
