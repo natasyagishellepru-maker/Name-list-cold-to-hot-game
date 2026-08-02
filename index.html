@@ -1,0 +1,1211 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Cold to Hot — Legacy Makers</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,500;0,600;0,700;1,500&family=Inter:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --navy:#0E2038; --navy-2:#16304F; --gold:#C9A227; --gold-soft:#E4CE87;
+    --paper:#F6F1E4; --paper-2:#EFE7D2; --ink:#20232B;
+    --cold:#3D6B99; --warm:#B8862F; --hot:#A63D40; --green:#3C6E71;
+    --plus:#3C6E71; --minus:#A63D40;
+    --line: rgba(14,32,56,0.14);
+  }
+  *{box-sizing:border-box;}
+  body{ margin:0; background:var(--navy); color:var(--ink); font-family:'Inter',sans-serif; min-height:100vh; -webkit-tap-highlight-color:transparent; }
+  .app{ max-width:480px; margin:0 auto; min-height:100vh; background:var(--paper); display:flex; flex-direction:column; }
+  header.top{ background:var(--navy); padding:16px 20px 14px; color:var(--paper); position:sticky; top:0; z-index:20; border-bottom:3px solid var(--gold); }
+  .headrow{display:flex; justify-content:space-between; align-items:flex-start; gap:10px;}
+  .eyebrow{ font-family:'Space Mono',monospace; font-size:10.5px; letter-spacing:0.18em; text-transform:uppercase; color:var(--gold-soft); margin:0 0 4px; }
+  h1.title{ font-family:'Lora',serif; font-weight:700; font-size:21px; margin:0; letter-spacing:-0.01em; }
+  .head-right{display:flex; flex-direction:column; align-items:flex-end; gap:6px;}
+  .gear-btn{ background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.15); color:var(--gold-soft); font-size:16px; width:32px; height:32px; border-radius:8px; cursor:pointer; display:flex; align-items:center; justify-content:center; }
+  .timer-pill{ font-family:'Space Mono',monospace; font-size:11px; background:rgba(255,255,255,0.08); padding:3px 9px; border-radius:20px; color:var(--gold-soft); white-space:nowrap; }
+  .navrow{ display:flex; gap:8px; margin-top:12px; }
+  .navbtn{ flex:1; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.14); color:var(--paper); font-size:11.5px; font-weight:600; padding:8px 4px; border-radius:8px; cursor:pointer; opacity:0.55; }
+  .navbtn.active{ background:var(--gold); color:var(--navy); border-color:var(--gold); opacity:1; }
+  main{ flex:1; padding:20px; padding-bottom:40px; }
+  .screen{display:none;} .screen.active{display:block;}
+  .card{ background:#fff; border:1px solid var(--line); border-radius:14px; padding:18px; margin-bottom:14px; box-shadow:0 1px 2px rgba(14,32,56,0.06); }
+  .field{margin-bottom:14px;}
+  .field label{ display:block; font-size:12px; font-weight:600; color:var(--navy-2); margin-bottom:6px; }
+  .field input[type=text], .field input[type=number], .field select, .field textarea{ width:100%; padding:11px 12px; border-radius:9px; border:1.5px solid var(--line); font-size:14.5px; background:var(--paper-2); font-family:inherit; }
+  .field textarea{resize:vertical; min-height:56px;}
+  .field input:focus, select:focus, textarea:focus{outline:2px solid var(--gold); outline-offset:1px;}
+  .role-pick{ display:flex; gap:8px; }
+  .role-opt{ flex:1; border:1.5px solid var(--line); border-radius:10px; padding:11px 8px; text-align:center; font-size:12.5px; font-weight:600; color:var(--navy-2); cursor:pointer; background:#fff; }
+  .role-opt.sel{ background:var(--navy); color:var(--paper); border-color:var(--navy); }
+  .btn{ display:inline-flex; align-items:center; justify-content:center; gap:8px; width:100%; padding:14px 16px; border-radius:11px; border:none; font-weight:700; font-size:15px; cursor:pointer; }
+  .btn-primary{background:var(--navy); color:var(--paper);}
+  .btn-gold{background:var(--gold); color:var(--navy);}
+  .btn-ghost{background:transparent; color:var(--navy-2); border:1.5px solid var(--line);}
+  .btn-danger{background:#fff; color:var(--hot); border:1.5px solid var(--hot);}
+  .btn:disabled{opacity:0.4; cursor:not-allowed;}
+  .btn-sm{padding:9px 12px; font-size:12.5px; width:auto;}
+  .intro-copy{ font-size:13.5px; line-height:1.6; color:#4A4F5A; }
+  .intro-copy b{color:var(--navy-2);}
+
+  .badge{ display:inline-block; font-family:'Space Mono',monospace; font-size:10px; text-transform:uppercase; letter-spacing:.06em; padding:3px 9px; border-radius:20px; font-weight:700; }
+  .badge.cold{background:rgba(61,107,153,0.15); color:var(--cold);}
+  .badge.warm{background:rgba(184,134,47,0.15); color:var(--warm);}
+  .badge.hot{background:rgba(166,61,64,0.15); color:var(--hot);}
+
+  .scene-card{ background:#fff; border-radius:14px; border:1px solid var(--line); overflow:hidden; margin-bottom:16px; }
+  .scene-head{ background:var(--navy); color:var(--paper); padding:14px 16px; display:flex; justify-content:space-between; align-items:flex-start; gap:10px;}
+  .scene-num{ font-family:'Space Mono',monospace; font-size:11px; color:var(--gold-soft); }
+  .scene-ctx{ font-family:'Lora',serif; font-weight:600; font-size:15px; margin:4px 0 0; line-height:1.4; }
+  .scene-body{ padding:16px; }
+  .prospek-line{
+    background:var(--paper-2); border-radius:12px; padding:14px;
+    font-size:14.5px; line-height:1.6; font-style:italic; color:var(--ink);
+    border-left:3px solid var(--gold);
+  }
+  .prospek-tag{ font-family:'Space Mono',monospace; font-size:10px; text-transform:uppercase; color:#8a8f99; margin-bottom:6px; display:block; }
+
+  .section-label{ font-family:'Space Mono',monospace; font-size:10.5px; letter-spacing:0.1em; text-transform:uppercase; color:var(--navy-2); margin:0 0 10px; }
+
+  .option-card{
+    border:1.5px solid var(--line); background:#fff; border-radius:11px;
+    padding:13px 14px; margin-bottom:8px; cursor:pointer; font-size:13.5px; line-height:1.5;
+  }
+  .option-card.picked{ background:var(--navy); border-color:var(--navy); color:var(--paper); }
+
+  .checklist-group{margin-bottom:16px;}
+  .checklist-group .ghead{font-size:11.5px; font-weight:700; margin-bottom:8px;}
+  .ghead.plus{color:var(--plus);} .ghead.minus{color:var(--minus);}
+  .check-row{
+    display:flex; align-items:flex-start; gap:10px;
+    background:var(--paper-2); border-radius:11px; padding:11px 13px; cursor:pointer; margin-bottom:7px;
+  }
+  .check-row.on.plus-row{ background:var(--plus); }
+  .check-row.on.minus-row{ background:var(--minus); }
+  .check-row.on .check-text{color:#fff;}
+  .check-text{ font-size:12.5px; font-weight:500; color:var(--navy-2); flex:1; line-height:1.5;}
+  .checkbox{ width:20px; height:20px; border-radius:6px; border:2px solid var(--line); flex-shrink:0; margin-top:1px; display:flex; align-items:center; justify-content:center; font-size:12px; color:#fff;}
+  .check-row.on .checkbox{ background:rgba(255,255,255,0.25); border-color:transparent;}
+
+  .stamp{ display:inline-block; border:3px solid var(--green); color:var(--green); font-family:'Space Mono',monospace; font-weight:700; font-size:13px; text-transform:uppercase; letter-spacing:0.08em; padding:8px 14px; border-radius:6px; transform:rotate(-3deg); margin-bottom:10px; }
+  .stamp.warn{ border-color:var(--hot); color:var(--hot); }
+
+  .explain-box{ background:var(--paper-2); border-left:3px solid var(--gold); border-radius:8px; padding:12px 14px; font-size:13px; line-height:1.6; color:#3d4250; margin-top:10px; }
+
+  .score-box{ background:var(--navy); color:var(--paper); border-radius:14px; padding:20px; text-align:center; margin:14px 0; }
+  .score-num{ font-family:'Lora',serif; font-size:44px; font-weight:700; color:var(--gold); line-height:1; }
+  .score-label{ font-size:11.5px; color:rgba(246,241,228,0.7); margin-top:4px; }
+  .score-breakdown{ display:flex; justify-content:center; gap:14px; margin-top:14px; font-size:11px; color:rgba(246,241,228,0.85); flex-wrap:wrap; }
+
+  .lb-row{ display:flex; align-items:center; gap:12px; padding:12px 14px; background:#fff; border:1px solid var(--line); border-radius:10px; margin-bottom:8px; }
+  .lb-rank{ font-family:'Lora',serif; font-weight:700; font-size:16px; color:var(--navy-2); width:22px; }
+  .lb-rank.g1{color:var(--gold);}
+  .lb-name{flex:1; font-weight:600; font-size:14px;}
+  .lb-meta{font-size:10.5px; color:#8a8f99;}
+  .lb-score{ font-family:'Space Mono',monospace; font-weight:700; font-size:16px; color:var(--navy); }
+  .empty{ text-align:center; padding:30px 14px; color:#8a8f99; font-size:13px; }
+  .toast{ position:fixed; bottom:20px; left:50%; transform:translateX(-50%); background:var(--navy); color:var(--paper); padding:11px 20px; border-radius:30px; font-size:13px; font-weight:600; box-shadow:0 6px 20px rgba(0,0,0,0.25); z-index:100; opacity:0; pointer-events:none; transition:opacity 0.25s; }
+  .toast.show{opacity:1;}
+  .shared-note{ font-size:11px; color:#8a8f99; text-align:center; margin-top:6px; }
+  .big-timer{ font-family:'Space Mono',monospace; font-size:38px; font-weight:700; text-align:center; color:var(--navy); margin:6px 0; }
+  .admin-lock{ text-align:center; padding:40px 20px; }
+  .row-between{display:flex; justify-content:space-between; align-items:center; gap:10px;}
+  table.admin-table{width:100%; border-collapse:collapse; font-size:12px;}
+  table.admin-table th{text-align:left; font-family:'Space Mono',monospace; font-size:9.5px; text-transform:uppercase; color:#8a8f99; padding:6px 6px; border-bottom:1.5px solid var(--line);}
+  table.admin-table td{padding:8px 6px; border-bottom:1px solid var(--line);}
+  .persona-row{border:1.5px solid var(--line); border-radius:11px; padding:12px 14px; margin-bottom:8px; background:#fff;}
+  .persona-row-top{display:flex; justify-content:space-between; align-items:flex-start; gap:8px; margin-bottom:6px;}
+  .persona-preview{font-size:12.5px; color:#4A4F5A; line-height:1.5;}
+  .row-btns{display:flex; gap:6px;}
+  .icon-btn{background:var(--paper-2); border:1px solid var(--line); border-radius:7px; padding:5px 9px; font-size:12px; cursor:pointer; color:var(--navy-2);}
+  .opt-edit-row{display:flex; align-items:center; gap:8px; margin-bottom:8px;}
+  .opt-edit-row input[type=text]{flex:1;}
+  .radio-ideal{flex-shrink:0; display:flex; align-items:center; gap:4px; font-size:10.5px; color:var(--navy-2);}
+  .app.projector-mode{ max-width:100%; }
+  .app.projector-mode header.top{ display:none; }
+  .app.projector-mode main{ padding:0; }
+  #screen-projector.active{ display:flex !important; flex-direction:column; min-height:100vh; background:var(--navy); color:var(--paper); padding:0; }
+  .proj-wrap{ max-width:900px; margin:0 auto; width:100%; padding:36px 32px 50px; }
+  .proj-top{ display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; }
+  .proj-eyebrow{ font-family:'Space Mono',monospace; font-size:14px; letter-spacing:.18em; text-transform:uppercase; color:var(--gold-soft); }
+  .proj-title{ font-family:'Lora',serif; font-weight:700; font-size:38px; margin:2px 0 22px; }
+  .proj-timer-box{ background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.15); border-radius:18px; padding:18px 24px; text-align:center; margin-bottom:28px; }
+  .proj-timer-label{ font-family:'Space Mono',monospace; font-size:12px; letter-spacing:.12em; text-transform:uppercase; color:var(--gold-soft); margin-bottom:4px;}
+  .proj-timer-num{ font-family:'Space Mono',monospace; font-weight:700; font-size:64px; color:var(--gold); line-height:1; }
+  .proj-lb-row{ display:flex; align-items:center; gap:20px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); border-radius:14px; padding:16px 22px; margin-bottom:12px; }
+  .proj-rank{ font-family:'Lora',serif; font-weight:700; font-size:26px; color:var(--gold-soft); width:44px; text-align:center; }
+  .proj-rank.g1{color:var(--gold); font-size:32px;}
+  .proj-name{ flex:1; font-size:20px; font-weight:700; }
+  .proj-meta{ font-size:12.5px; color:rgba(246,241,228,0.55); margin-top:2px;}
+  .proj-score{ font-family:'Space Mono',monospace; font-weight:700; font-size:28px; color:var(--gold); }
+  .proj-exit{ position:fixed; top:16px; right:16px; background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.2); color:var(--paper); padding:8px 14px; border-radius:8px; font-size:12px; cursor:pointer; }
+  .tabs2{display:flex; gap:6px; margin-bottom:14px;}
+  .tab2{flex:1; text-align:center; padding:8px; font-size:12px; font-weight:700; border-radius:8px; border:1.5px solid var(--line); background:#fff; color:var(--navy-2); cursor:pointer;}
+  .tab2.active{background:var(--navy); color:var(--paper); border-color:var(--navy);}
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="top">
+    <div class="headrow">
+      <div>
+        <p class="eyebrow">Legacy Makers · Latihan Berpasangan</p>
+        <h1 class="title">Cold to Hot</h1>
+      </div>
+      <div class="head-right">
+        <button class="gear-btn" id="btn-open-admin" title="Admin">⚙️</button>
+        <span class="timer-pill" id="timer-pill">⏱ --:--</span>
+      </div>
+    </div>
+    <div class="navrow">
+      <button class="navbtn active" data-screen="setup">Mulai</button>
+      <button class="navbtn" data-screen="game">Main</button>
+      <button class="navbtn" data-screen="leaderboard">Papan Skor</button>
+    </div>
+  </header>
+
+  <main>
+    <!-- SETUP -->
+    <section class="screen active" id="screen-setup">
+      <div class="card">
+        <p class="intro-copy">
+          Kalian berdua bergantian: satu ronde jadi <b>Agent</b> (yang bicara ke calon klien), satu ronde jadi <b>Persona</b> (memerankan calon klien). Ronde 1 pakai pilihan jawaban, dinilai oleh Persona. Ronde 2 jawab bebas, dinilai sendiri oleh Agent pakai checklist.
+        </p>
+      </div>
+      <div class="card">
+        <div class="field">
+          <label>Nama Pemain 1</label>
+          <input type="text" id="input-p1" placeholder="mis. Dimas">
+        </div>
+        <div class="field">
+          <label>Nama Pemain 2</label>
+          <input type="text" id="input-p2" placeholder="mis. Sinta">
+        </div>
+        <div class="field">
+          <label>Ronde ini: siapa yang jadi Agent?</label>
+          <div class="role-pick" id="role-pick">
+            <div class="role-opt" data-p="1">Pemain 1</div>
+            <div class="role-opt" data-p="2">Pemain 2</div>
+          </div>
+        </div>
+        <div class="field">
+          <label>Pilih Ronde</label>
+          <div class="role-pick" id="round-pick">
+            <div class="role-opt" data-r="1">Ronde 1 — Pilihan Jawaban</div>
+            <div class="role-opt" data-r="2">Ronde 2 — Jawab Bebas</div>
+          </div>
+        </div>
+        <button class="btn btn-primary" id="btn-start-round">Ambil Skenario</button>
+      </div>
+    </section>
+
+    <!-- GAME -->
+    <section class="screen" id="screen-game">
+      <div id="game-empty" class="card">
+        <p class="intro-copy">Belum ada ronde aktif. Isi data di tab <b>Mulai</b> dulu.</p>
+      </div>
+
+      <div id="game-content" style="display:none;">
+        <div class="scene-card">
+          <div class="scene-head">
+            <div>
+              <div class="scene-num" id="scene-num">SKENARIO #00</div>
+              <p class="scene-ctx" id="scene-ctx">Konteks</p>
+            </div>
+            <span class="badge" id="scene-badge">COLD</span>
+          </div>
+          <div class="scene-body">
+            <span class="prospek-tag">Persona bilang / lakuin:</span>
+            <div class="prospek-line" id="prospek-line"></div>
+          </div>
+        </div>
+
+        <div id="round1-block">
+          <p class="section-label"><span id="agent-name-label">Agent</span>, ucapkan pilihanmu ke pasangan sekarang:</p>
+          <div id="options-container" style="margin-bottom:6px;"></div>
+        </div>
+
+        <div id="round2-note" class="explain-box" style="display:none; margin-bottom:14px;"></div>
+
+        <div id="persona-scoring-block" style="display:none; margin-top:18px;">
+          <p class="section-label"><span id="scorer-name-label">Persona</span>, nilai pakai checklist ini: <span id="max-point-note" style="color:#8a8f99; font-weight:400; text-transform:none; letter-spacing:0;"></span></p>
+          <div class="checklist-group">
+            <div class="ghead plus">+ Hal baik yang dilakukan</div>
+            <div id="plus-list"></div>
+          </div>
+          <div class="checklist-group">
+            <div class="ghead minus">− Hal yang sebaiknya tidak dilakukan</div>
+            <div id="minus-list"></div>
+          </div>
+          <button class="btn btn-primary" id="btn-cek-jawaban">Selesai Menilai & Lihat Skor</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- RESULT -->
+    <section class="screen" id="screen-result">
+      <div id="result-content"></div>
+    </section>
+
+    <!-- LEADERBOARD -->
+    <section class="screen" id="screen-leaderboard">
+      <p class="section-label">Papan Skor Kelas</p>
+      <div class="big-timer" id="lb-timer">--:--</div>
+      <div id="lb-list"></div>
+      <p class="shared-note">Skor di sini terlihat oleh semua tim di kelas.</p>
+      <button class="btn btn-ghost" id="btn-refresh-lb" style="margin-top:14px;">Refresh</button>
+    </section>
+
+    <!-- PROJECTOR / LAYAR KELAS -->
+    <section class="screen" id="screen-projector">
+      <button class="proj-exit" id="btn-exit-projector">Keluar Layar Kelas</button>
+      <div class="proj-wrap">
+        <div class="proj-top">
+          <span class="proj-eyebrow">Legacy Makers · Cold to Hot</span>
+        </div>
+        <h1 class="proj-title">Papan Skor Kelas</h1>
+        <div class="proj-timer-box">
+          <div class="proj-timer-label" id="proj-timer-label">Ronde 1 — Pilihan Jawaban</div>
+          <div class="proj-timer-num" id="proj-timer-num">--:--</div>
+        </div>
+        <div id="proj-lb-list"></div>
+      </div>
+    </section>
+
+    <!-- ADMIN -->
+    <section class="screen" id="screen-admin">
+      <div id="admin-locked" class="admin-lock">
+        <p class="intro-copy" style="margin-bottom:14px;">Masukkan kode admin untuk membuka dashboard fasilitator.</p>
+        <div class="field">
+          <input type="text" id="admin-code" placeholder="Kode admin">
+        </div>
+        <button class="btn btn-gold" id="btn-admin-unlock">Buka Dashboard</button>
+        <button class="btn btn-ghost" id="btn-admin-back" style="margin-top:10px;">Kembali</button>
+      </div>
+      <div id="admin-panel" style="display:none;">
+        <div class="tabs2">
+          <div class="tab2 active" data-tab="control">Kontrol</div>
+          <div class="tab2" data-tab="personas">Persona</div>
+          <div class="tab2" data-tab="checklists">Checklist</div>
+          <div class="tab2" data-tab="teams">Tim & Skor</div>
+        </div>
+
+        <div id="admin-tab-control" class="admin-tab">
+          <div class="card">
+            <p class="section-label">Timer Ronde 1 (Pilihan Jawaban)</p>
+            <div class="field" style="margin-bottom:10px;">
+              <label>Durasi (menit)</label>
+              <input type="number" id="admin-r1-min" value="10" min="1">
+            </div>
+            <div style="display:flex; gap:8px;">
+              <button class="btn btn-primary btn-sm" data-round="1" data-act="start" style="flex:1;">Mulai</button>
+              <button class="btn btn-ghost btn-sm" data-round="1" data-act="pause" style="flex:1;">Jeda</button>
+              <button class="btn btn-ghost btn-sm" data-round="1" data-act="reset" style="flex:1;">Reset</button>
+            </div>
+          </div>
+          <div class="card">
+            <p class="section-label">Timer Ronde 2 (Jawab Bebas)</p>
+            <div class="field" style="margin-bottom:10px;">
+              <label>Durasi (menit)</label>
+              <input type="number" id="admin-r2-min" value="10" min="1">
+            </div>
+            <div style="display:flex; gap:8px;">
+              <button class="btn btn-primary btn-sm" data-round="2" data-act="start" style="flex:1;">Mulai</button>
+              <button class="btn btn-ghost btn-sm" data-round="2" data-act="pause" style="flex:1;">Jeda</button>
+              <button class="btn btn-ghost btn-sm" data-round="2" data-act="reset" style="flex:1;">Reset</button>
+            </div>
+          </div>
+          <div class="card">
+            <p class="section-label">Jumlah Persona Aktif Sesi Ini</p>
+            <div class="field" style="margin-bottom:10px;">
+              <label>Berapa persona dipakai (dari total <span id="total-persona-count">0</span>)</label>
+              <input type="number" id="admin-active-num" value="15" min="1">
+            </div>
+            <button class="btn btn-primary btn-sm" id="btn-save-active">Terapkan ke Semua Pemain</button>
+          </div>
+          <div class="card">
+            <p class="section-label">Layar Kelas (Proyektor)</p>
+            <p class="intro-copy" style="margin-bottom:10px;">Buka tampilan besar untuk ditayangkan ke layar/proyektor kelas — menampilkan papan skor & timer secara live, gaya Kahoot.</p>
+            <button class="btn btn-gold btn-sm" id="btn-open-projector">🎬 Buka Layar Kelas</button>
+          </div>
+        </div>
+
+        <div id="admin-tab-personas" class="admin-tab" style="display:none;">
+          <div class="card">
+            <button class="btn btn-gold btn-sm" id="btn-add-persona">+ Tambah Persona Baru</button>
+          </div>
+          <div id="persona-admin-list"></div>
+        </div>
+
+        <div id="admin-tab-checklists" class="admin-tab" style="display:none;">
+          <div class="card">
+            <span class="badge cold" style="margin-bottom:8px;">COLD</span>
+            <div class="field"><label>Hal baik (+) — satu per baris</label><textarea id="cl-cold-plus" rows="4"></textarea></div>
+            <div class="field"><label>Red flag (−) — satu per baris</label><textarea id="cl-cold-minus" rows="4"></textarea></div>
+            <button class="btn btn-primary btn-sm" data-stage="cold">Simpan Checklist Cold</button>
+          </div>
+          <div class="card">
+            <span class="badge warm" style="margin-bottom:8px;">WARM</span>
+            <div class="field"><label>Hal baik (+) — satu per baris</label><textarea id="cl-warm-plus" rows="4"></textarea></div>
+            <div class="field"><label>Red flag (−) — satu per baris</label><textarea id="cl-warm-minus" rows="4"></textarea></div>
+            <button class="btn btn-primary btn-sm" data-stage="warm">Simpan Checklist Warm</button>
+          </div>
+          <div class="card">
+            <span class="badge hot" style="margin-bottom:8px;">HOT</span>
+            <div class="field"><label>Hal baik (+) — satu per baris</label><textarea id="cl-hot-plus" rows="4"></textarea></div>
+            <div class="field"><label>Red flag (−) — satu per baris</label><textarea id="cl-hot-minus" rows="4"></textarea></div>
+            <button class="btn btn-primary btn-sm" data-stage="hot">Simpan Checklist Hot</button>
+          </div>
+        </div>
+
+        <div id="admin-tab-teams" class="admin-tab" style="display:none;">
+          <div class="card">
+            <div class="row-between">
+              <p class="section-label" style="margin:0;">Semua Pasangan & Skor</p>
+              <button class="btn btn-ghost btn-sm" id="btn-admin-refresh">Refresh</button>
+            </div>
+            <table class="admin-table" id="admin-table">
+              <thead><tr><th>Tim</th><th>Pemain</th><th>Ronde</th><th>Total Skor</th></tr></thead>
+              <tbody id="admin-tbody"></tbody>
+            </table>
+          </div>
+          <div class="card">
+            <p class="section-label">Mulai Sesi / Hari Baru</p>
+            <p class="intro-copy" style="margin-bottom:10px;">Hapus semua skor & tim tersimpan supaya papan skor kosong untuk sesi permainan berikutnya. Persona & checklist tidak akan terhapus.</p>
+            <button class="btn btn-ghost btn-sm" id="btn-reset-scores" style="border-color:var(--minus); color:var(--minus);">🗑️ Reset Semua Skor</button>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ---------- SUPABASE-BACKED SHARED STORAGE ---------- */
+/* Dedicated project, dedicated table (cth_kv), no overlap with any other app. */
+const SUPABASE_URL = "https://mcjdrfvjacwdswimejit.supabase.co";
+const SUPABASE_KEY = "sb_publishable_BNsiz5SBli48CuqnVBzusg_McDeYfmD";
+const SB_HEADERS = { apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY, "Content-Type": "application/json" };
+
+const storage = {
+  async get(key){
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/cth_kv?key=eq.${encodeURIComponent(key)}&select=key,value`, { headers: SB_HEADERS });
+    if(!res.ok) throw new Error('storage.get failed: ' + res.status);
+    const rows = await res.json();
+    return rows && rows[0] ? { key: rows[0].key, value: rows[0].value } : null;
+  },
+  async set(key, value){
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/cth_kv`, {
+      method: 'POST',
+      headers: { ...SB_HEADERS, Prefer: 'resolution=merge-duplicates' },
+      body: JSON.stringify({ key, value, updated_at: new Date().toISOString() })
+    });
+    if(!res.ok) throw new Error('storage.set failed: ' + res.status);
+    return { key, value };
+  },
+  async delete(key){
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/cth_kv?key=eq.${encodeURIComponent(key)}`, { method: 'DELETE', headers: SB_HEADERS });
+    if(!res.ok) throw new Error('storage.delete failed: ' + res.status);
+    return { key, deleted: true };
+  },
+  async list(prefix){
+    const p = prefix ? `&key=like.${encodeURIComponent(prefix)}*` : '';
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/cth_kv?select=key${p}`, { headers: SB_HEADERS });
+    if(!res.ok) throw new Error('storage.list failed: ' + res.status);
+    const rows = await res.json();
+    return { keys: rows.map(r=>r.key) };
+  }
+};
+
+/* ---------- DEFAULT DATA ---------- */
+const DEFAULT_CHECKLISTS = {
+  cold: {
+    plus: [
+      "Membangun obrolan santai, tidak buru-buru ke topik kerja/asuransi",
+      "Menunjukkan rasa ingin tahu tulus tentang orang tersebut (nama, asal, kesibukan)",
+      "Meminta kontak (IG/nomor) dengan cara natural, bukan mendesak"
+    ],
+    minus: [
+      "Langsung menyebut asuransi atau produk",
+      "Memamerkan pencapaian / cerita klien lain (flexing)",
+      "Bertanya seperti menginterogasi, tanpa basa-basi dulu"
+    ]
+  },
+  warm: {
+    plus: [
+      "Menyambung dari obrolan/topik sebelumnya secara natural",
+      "Menanyakan kabar atau perkembangan hidup mereka dengan tulus",
+      "Membiarkan calon klien yang bertanya duluan soal pekerjaan agent"
+    ],
+    minus: [
+      "Menawarkan produk padahal belum diminta/dipancing",
+      "Menakut-nakuti dengan risiko secara dramatis",
+      "Memaksa untuk janjian/bertemu saat itu juga"
+    ]
+  },
+  hot: {
+    plus: [
+      "Terbuka & jujur bahwa dia agent asuransi saat ditanya",
+      "Mengaitkan tawaran dengan kebutuhan spesifik yang pernah disebut calon klien",
+      "Mengajak ketemu dengan waktu yang fleksibel, bukan memaksa"
+    ],
+    minus: [
+      "Terburu-buru mengarah ke closing di chat/telepon",
+      "Tidak memberi ruang bagi calon klien untuk berpikir",
+      "Bicara seolah produk itu wajib dibeli"
+    ]
+  }
+};
+
+const DEFAULT_PERSONAS = [
+  {id:"C1", stage:"cold", konteks:"Di acara kondangan, baru pertama kali kenalan lewat teman bareng.",
+   prospek:"\"Oh kerja di asuransi ya? Wah keren.\" (nada basa-basi, sekadar sopan)",
+   ideal:"\"Iya nih, btw kamu kerja di mana sekarang?\" — biarin obrolan ngalir dulu.",
+   options:[
+     {text:"\"Iya nih, btw kamu kerja di mana sekarang?\"", ideal:true},
+     {text:"\"Iya, kebetulan lagi ada promo bagus nih, mau saya jelasin?\"", ideal:false},
+     {text:"\"Iya, alhamdulillah tahun ini udah bantu banyak klien capai target proteksi mereka.\"", ideal:false}
+   ]},
+  {id:"C2", stage:"cold", konteks:"Di grup WA komunitas hobi, prospek react story soal tips keuangan.",
+   prospek:"Cuma kasih emoji 👍 di story, nggak ada chat lanjutan.",
+   ideal:"React balik santai di grup, nggak DM personal nawarin ngobrol soal produk.",
+   options:[
+     {text:"React balik emoji santai, nggak DM personal dulu.", ideal:true},
+     {text:"DM: \"Eh tertarik nggak sama tips tadi? Aku bisa bantu atur strategimu.\"", ideal:false},
+     {text:"DM: \"Yuk kita ngobrol sekarang, aku lagi ada waktu kok.\"", ideal:false}
+   ]},
+  {id:"C3", stage:"cold", konteks:"Baru kenalan 10 menit lalu di acara arisan keluarga jauh.",
+   prospek:"\"Oh iya kerja apa sekarang?\" (obrolan masih permukaan banget)",
+   ideal:"Jawab santai, lalu tanya balik: \"Kalau kamu sendiri kesibukannya apa sekarang?\"",
+   options:[
+     {text:"Jawab santai, tanya balik: \"Kalau kamu sendiri kesibukannya apa sekarang?\"", ideal:true},
+     {text:"\"Kerja di asuransi, alhamdulillah udah banyak yang closing bulan ini.\"", ideal:false},
+     {text:"\"Kerja di asuransi nih, kamu udah punya proteksi belum?\"", ideal:false}
+   ]},
+  {id:"C4", stage:"cold", konteks:"Ketemu di gym, sama-sama nunggu alat yang lagi dipakai orang.",
+   prospek:"\"Rutin di sini juga ya?\" (obrolan basa-basi sambil nunggu)",
+   ideal:"\"Iya, coba mulai rutin nih. Kamu udah lama di sini?\" — tetap di topik gym, jangan loncat ke kerjaan.",
+   options:[
+     {text:"\"Iya, coba mulai rutin nih. Kamu udah lama di sini?\"", ideal:true},
+     {text:"\"Iya nih, btw kerja di asuransi lho, kartu nama boleh aku kasih?\"", ideal:false},
+     {text:"\"Iya, sambil olahraga saya juga suka sharing soal proteksi kesehatan sih.\"", ideal:false}
+   ]},
+  {id:"C5", stage:"cold", konteks:"Kenalan baru lewat aplikasi komunitas alumni kampus.",
+   prospek:"\"Hai, kita satu jurusan ya dulu? Angkatan berapa?\"",
+   ideal:"Jawab ramah, lanjut obrolan seputar kampus/kenangan bareng, belum ke arah kerjaan sama sekali.",
+   options:[
+     {text:"Jawab ramah, lanjut ngobrol soal kenangan kampus.", ideal:true},
+     {text:"\"Iya, angkatan segitu. Btw sekarang kerja di asuransi, kali aja butuh.\"", ideal:false},
+     {text:"\"Iya! Eh boleh minta nomornya? Ada info bagus yang mau aku share.\"", ideal:false}
+   ]},
+  {id:"W1", stage:"warm", konteks:"Udah beberapa kali chat WA santai, prospek cerita baru pindah kerja.",
+   prospek:"\"Iya nih baru mulai minggu ini di kantor baru, agak capek adaptasi.\"",
+   ideal:"\"Wah selamat ya! Gimana rasanya di tempat baru, udah dapet benefit-benefit macem gitu belum?\"",
+   options:[
+     {text:"\"Wah selamat ya! Gimana rasanya, udah dapet benefit-benefit macem gitu belum?\"", ideal:true},
+     {text:"\"Wah selamat! Eh pas banget, kantor baru biasanya benefit terbatas, mending atur proteksi tambahan yuk.\"", ideal:false},
+     {text:"\"Wah hati-hati loh, kantor baru biasanya coverage-nya kecil, kalau kejadian apa-apa bisa berat.\"", ideal:false}
+   ]},
+  {id:"W2", stage:"warm", konteks:"Ketemu lagi di gathering komunitas kedua kalinya.",
+   prospek:"\"Anakku baru masuk sekolah nih, lumayan juga ya biayanya sekarang.\"",
+   ideal:"\"Wah iya, sekolah sekarang emang naik terus. Udah ada rencana buat beberapa tahun ke depan?\"",
+   options:[
+     {text:"\"Wah iya, sekolah sekarang emang naik terus. Udah ada rencana buat beberapa tahun ke depan?\"", ideal:true},
+     {text:"\"Iya makanya mending disiapin dana pendidikan dari sekarang, aku ada produknya nih.\"", ideal:false},
+     {text:"\"Iya tuh, banyak klienku juga udah siapin dari jauh-jauh hari, hasilnya udah kerasa sekarang.\"", ideal:false}
+   ]},
+  {id:"W3", stage:"warm", konteks:"Udah sering ngobrol berbulan-bulan, belum pernah singgung topik proteksi.",
+   prospek:"\"Kerjaan sekarang lumayan padat, jam kerja panjang terus, jarang sempet mikir hal lain.\"",
+   ideal:"\"Padat banget ya. Btw, kantor kamu ada benefit kesehatan gitu nggak buat jaga-jaga?\"",
+   options:[
+     {text:"\"Padat banget ya. Btw, kantor kamu ada benefit kesehatan gitu nggak buat jaga-jaga?\"", ideal:true},
+     {text:"\"Nah makanya, mumpung inget, yuk kita atur sekarang biar nggak kelewat lagi.\"", ideal:false},
+     {text:"\"Wah bahaya tuh kalau jarang mikirin itu, ntar kalau kejadian apa-apa gimana?\"", ideal:false}
+   ]},
+  {id:"W4", stage:"warm", konteks:"Temenan udah setahun, prospek baru posting foto liburan sama pasangannya.",
+   prospek:"\"Akhirnya honeymoon juga setelah nikah tahun lalu, seru banget!\"",
+   ideal:"\"Wah seru banget! Gimana rasanya udah setahun nikah, banyak yang berubah nggak dari segi rencana ke depan?\"",
+   options:[
+     {text:"\"Wah seru banget! Gimana rasanya udah setahun nikah, banyak yang berubah dari segi rencana ke depan?\"", ideal:true},
+     {text:"\"Seru! Eh pasutri biasanya butuh proteksi keluarga nih, mau aku bantu cariin?\"", ideal:false},
+     {text:"\"Wih enak ya, btw udah mikirin masa depan finansial keluarga belum?\"", ideal:false}
+   ]},
+  {id:"W5", stage:"warm", konteks:"Kenal dari kerja bareng dulu, sekarang beda kantor, sesekali masih chat.",
+   prospek:"\"Aku baru naik jabatan nih bulan ini, tanggung jawab makin banyak.\"",
+   ideal:"\"Wah selamat ya atas promosinya! Berarti makin sibuk juga dong, gimana rasanya sejauh ini?\"",
+   options:[
+     {text:"\"Wah selamat ya atas promosinya! Gimana rasanya sejauh ini?\"", ideal:true},
+     {text:"\"Selamat! Naik jabatan biasanya penghasilan naik, udah mulai atur investasi/proteksi belum?\"", ideal:false},
+     {text:"\"Selamat ya, pas banget nih aku juga lagi banyak bantu orang atur keuangan setelah naik gaji.\"", ideal:false}
+   ]},
+  {id:"H1", stage:"hot", konteks:"Lagi ngobrol santai di padel/kongkow, prospek nanya balik.",
+   prospek:"\"Eh btw kamu kerja di asuransi kan? Kerjanya ngapain aja sih sebenernya?\"",
+   ideal:"\"Iya nih, kerjaannya bantu orang atur proteksi finansial. Kalau kamu penasaran, kapan-kapan boleh ngobrol lebih santai.\"",
+   options:[
+     {text:"\"Iya nih, kerjaannya bantu orang atur proteksi finansial. Kalau kamu penasaran, kapan-kapan boleh ngobrol lebih santai.\"", ideal:true},
+     {text:"\"Oh pas banget, kamu perlu banget nih punya asuransi, kapan kita ketemu buat aku presentasiin?\"", ideal:false},
+     {text:"\"Iya, gimana kalau sekarang aja kita bahas, biar langsung clear.\"", ideal:false}
+   ]},
+  {id:"H2", stage:"hot", konteks:"Prospek cerita saudaranya baru kena sakit kritis, biaya rumah sakit besar.",
+   prospek:"\"Aku jadi mikir juga sih, kalau kejadian ke aku gimana ya...\" (nada khawatir, natural)",
+   ideal:"\"Turut prihatin ya. Wajar sih kepikiran gitu. Kalau kamu mau, aku boleh cerita dikit gimana orang biasanya antisipasi hal itu.\"",
+   options:[
+     {text:"\"Turut prihatin ya. Wajar sih kepikiran gitu. Kalau kamu mau, aku boleh cerita dikit gimana orang biasanya antisipasi hal itu.\"", ideal:true},
+     {text:"\"Iya makanya serem loh kalau nggak ada proteksi, bisa abis tabungan bertahun-tahun.\"", ideal:false},
+     {text:"\"Turut prihatin ya. Kebetulan aku ada produk yang pas banget buat kondisi kayak gitu, mau aku jelasin sekarang?\"", ideal:false}
+   ]},
+  {id:"H3", stage:"hot", konteks:"Sahabat dekat, sudah tahu sejak lama kalau kamu agent asuransi.",
+   prospek:"\"Eh, gaji baru naik nih, kayaknya udah waktunya aku mikirin proteksi serius deh.\"",
+   ideal:"\"Wah pas banget! Boleh nih kita ngobrol lebih detail, kamu ada waktu Sabtu atau Minggu sore?\"",
+   options:[
+     {text:"\"Wah pas banget! Boleh nih kita ngobrol lebih detail, kamu ada waktu Sabtu atau Minggu sore?\"", ideal:true},
+     {text:"\"Iya bener banget, langsung aja deh sore ini ketemu biar cepet kelar.\"", ideal:false},
+     {text:"\"Bagus tuh, kamu wajib banget ambil sekarang sebelum harga naik.\"", ideal:false}
+   ]},
+  {id:"H4", stage:"hot", konteks:"Klien lama yang sudah punya polis, kontak lagi karena kondisi keluarganya berubah.",
+   prospek:"\"Aku baru aja punya anak kedua nih, mungkin perlu review lagi polisnya ya?\"",
+   ideal:"\"Selamat ya buat anak keduanya! Iya, yuk kita review bareng, kapan waktu yang nyaman buat kamu?\"",
+   options:[
+     {text:"\"Selamat ya buat anak keduanya! Yuk kita review bareng, kapan waktu yang nyaman buat kamu?\"", ideal:true},
+     {text:"\"Selamat! Pasti butuh nambah coverage nih, aku siapin penawaran baru ya hari ini juga.\"", ideal:false},
+     {text:"\"Selamat ya. Anak kedua biasanya bikin biaya naik drastis loh, harus buru-buru diurus.\"", ideal:false}
+   ]},
+  {id:"H5", stage:"hot", konteks:"Prospek langsung chat duluan setelah lihat postingan edukasi asuransi kamu.",
+   prospek:"\"Halo, aku baca postingan kamu soal dana pensiun, aku tertarik pengen tau lebih lanjut.\"",
+   ideal:"\"Halo, makasih udah baca! Seneng bisa bantu jelasin. Enaknya ngobrol kapan, hari ini atau akhir pekan?\"",
+   options:[
+     {text:"\"Halo, makasih udah baca! Enaknya ngobrol kapan, hari ini atau akhir pekan?\"", ideal:true},
+     {text:"\"Halo! Langsung aja ya aku kirim brosur dan link pembayarannya sekarang.\"", ideal:false},
+     {text:"\"Halo, bagus tuh kamu sadar, soalnya dana pensiun kalau telat siapin bisa berabe loh nanti.\"", ideal:false}
+   ]}
+];
+
+let PERSONAS = [];
+let CHECKLISTS = {};
+
+async function loadPersonas(){
+  try{
+    const r = await storage.get('data:personas', true);
+    PERSONAS = r ? JSON.parse(r.value) : JSON.parse(JSON.stringify(DEFAULT_PERSONAS));
+  }catch(e){ PERSONAS = JSON.parse(JSON.stringify(DEFAULT_PERSONAS)); }
+}
+async function savePersonas(){
+  await storage.set('data:personas', JSON.stringify(PERSONAS), true);
+}
+async function loadChecklists(){
+  try{
+    const r = await storage.get('data:checklists', true);
+    CHECKLISTS = r ? JSON.parse(r.value) : JSON.parse(JSON.stringify(DEFAULT_CHECKLISTS));
+  }catch(e){ CHECKLISTS = JSON.parse(JSON.stringify(DEFAULT_CHECKLISTS)); }
+}
+async function saveChecklists(){
+  await storage.set('data:checklists', JSON.stringify(CHECKLISTS), true);
+}
+
+/* ---------- STATE ---------- */
+let state = {
+  pairId:"", p1:"", p2:"", agentIsP:1, round:1,
+  skenario:null, shuffledOptions:[], optionPick:null,
+  plusChecked:{}, minusChecked:{},
+  adminUnlocked:false
+};
+
+function $(sel){ return document.querySelector(sel); }
+function $all(sel){ return document.querySelectorAll(sel); }
+function showToast(msg){
+  const t = $('#toast'); t.textContent = msg; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), 1800);
+}
+let projectorInterval = null;
+function switchScreen(name){
+  $all('.screen').forEach(s=>s.classList.remove('active'));
+  $('#screen-'+name).classList.add('active');
+  $all('.navbtn').forEach(b=>b.classList.toggle('active', b.dataset.screen===name));
+  $('.app').classList.toggle('projector-mode', name==='projector');
+  if(name==='leaderboard') loadLeaderboard();
+  if(name==='projector'){
+    loadProjectorScreen();
+    if(projectorInterval) clearInterval(projectorInterval);
+    projectorInterval = setInterval(loadProjectorScreen, 3000);
+  } else if(projectorInterval){
+    clearInterval(projectorInterval);
+    projectorInterval = null;
+  }
+}
+$all('.navbtn').forEach(b=>b.addEventListener('click', ()=>switchScreen(b.dataset.screen)));
+$('#btn-open-admin').addEventListener('click', ()=>switchScreen('admin'));
+$('#btn-admin-back').addEventListener('click', ()=>switchScreen('setup'));
+
+/* ---------- SETUP ---------- */
+$all('#role-pick .role-opt').forEach(el=>{
+  el.addEventListener('click', ()=>{
+    state.agentIsP = parseInt(el.dataset.p);
+    $all('#role-pick .role-opt').forEach(o=>o.classList.toggle('sel', parseInt(o.dataset.p)===state.agentIsP));
+  });
+});
+$all('#round-pick .role-opt').forEach(el=>{
+  el.addEventListener('click', ()=>{
+    state.round = parseInt(el.dataset.r);
+    $all('#round-pick .role-opt').forEach(o=>o.classList.toggle('sel', parseInt(o.dataset.r)===state.round));
+  });
+});
+// default selections
+$('#round-pick .role-opt[data-r="1"]').classList.add('sel');
+
+async function getActiveCount(){
+  try{
+    const r = await storage.get('settings:active-count', true);
+    return r ? parseInt(r.value) : PERSONAS.length;
+  }catch(e){ return PERSONAS.length; }
+}
+
+$('#btn-start-round').addEventListener('click', async ()=>{
+  const p1 = $('#input-p1').value.trim();
+  const p2 = $('#input-p2').value.trim();
+  if(!p1 || !p2){ showToast("Isi kedua nama dulu"); return; }
+  if(!state.agentIsP){ showToast("Pilih siapa yang jadi Agent"); return; }
+  state.pairId = p1 + " & " + p2; state.p1 = p1; state.p2 = p2;
+
+  const n = await getActiveCount();
+  let pool = PERSONAS.slice(0, Math.max(1, Math.min(n, PERSONAS.length)));
+  if(pool.length===0) pool = PERSONAS;
+
+  state.skenario = pool[Math.floor(Math.random()*pool.length)];
+  state.shuffledOptions = [...state.skenario.options].sort(()=>Math.random()-0.5);
+  state.optionPick = null;
+  state.plusChecked = {}; state.minusChecked = {};
+  renderGame();
+  switchScreen('game');
+});
+
+/* ---------- GAME ---------- */
+function agentName(){ return state.agentIsP===1 ? state.p1 : state.p2; }
+function personaName(){ return state.agentIsP===1 ? state.p2 : state.p1; }
+
+function renderGame(){
+  const s = state.skenario;
+  $('#game-empty').style.display = s ? 'none' : 'block';
+  $('#game-content').style.display = s ? 'block' : 'none';
+  if(!s) return;
+
+  $('#scene-num').textContent = 'SKENARIO #' + s.id;
+  $('#scene-ctx').textContent = s.konteks;
+  $('#prospek-line').textContent = s.prospek;
+  const badge = $('#scene-badge');
+  badge.textContent = s.stage.toUpperCase();
+  badge.className = 'badge ' + s.stage;
+
+  $('#agent-name-label').textContent = agentName() + ' (Agent)';
+
+  const cl = CHECKLISTS[s.stage];
+  const maxPts = maxScoreFor(s.stage, state.round);
+  $('#max-point-note').textContent = '(maks. ' + maxPts + ' poin ronde ini)';
+
+  if(state.round === 1){
+    $('#round1-block').style.display = 'block';
+    $('#round2-note').style.display = 'none';
+    $('#scorer-name-label').textContent = personaName() + ' (Persona)';
+
+    const optContainer = $('#options-container');
+    optContainer.innerHTML = state.shuffledOptions.map((o,i)=>`
+      <div class="option-card ${state.optionPick===i?'picked':''}" data-i="${i}">${o.text}</div>
+    `).join('');
+    $all('.option-card').forEach(card=>{
+      card.addEventListener('click', ()=>{
+        state.optionPick = parseInt(card.dataset.i);
+        renderGame();
+      });
+    });
+    $('#persona-scoring-block').style.display = state.optionPick!==null ? 'block' : 'none';
+  } else {
+    $('#round1-block').style.display = 'none';
+    $('#round2-note').style.display = 'block';
+    $('#round2-note').textContent = agentName() + ', ucapkan responsmu sendiri dengan bahasamu (tanpa pilihan jawaban). Setelah selesai bicara, isi checklist ini sendiri secara jujur.';
+    $('#scorer-name-label').textContent = agentName() + ' (Agent, menilai diri sendiri)';
+    $('#persona-scoring-block').style.display = 'block';
+  }
+
+  $('#plus-list').innerHTML = cl.plus.map((t,i)=>`
+    <div class="check-row plus-row ${state.plusChecked[i]?'on':''}" data-i="${i}">
+      <div class="checkbox">${state.plusChecked[i]?'✓':''}</div>
+      <div class="check-text">${t}</div>
+    </div>`).join('');
+  $('#minus-list').innerHTML = cl.minus.map((t,i)=>`
+    <div class="check-row minus-row ${state.minusChecked[i]?'on':''}" data-i="${i}">
+      <div class="checkbox">${state.minusChecked[i]?'✓':''}</div>
+      <div class="check-text">${t}</div>
+    </div>`).join('');
+  $all('#plus-list .check-row').forEach(row=>{
+    row.addEventListener('click', ()=>{ state.plusChecked[row.dataset.i] = !state.plusChecked[row.dataset.i]; renderGame(); });
+  });
+  $all('#minus-list .check-row').forEach(row=>{
+    row.addEventListener('click', ()=>{ state.minusChecked[row.dataset.i] = !state.minusChecked[row.dataset.i]; renderGame(); });
+  });
+}
+
+$('#btn-cek-jawaban').addEventListener('click', ()=>{
+  showResult();
+  switchScreen('result');
+});
+
+function maxScoreFor(stage, roundNum){
+  const cl = CHECKLISTS[stage];
+  return cl.plus.length + (roundNum===1 ? 2 : 0);
+}
+
+function computeScore(){
+  const s = state.skenario;
+  const cl = CHECKLISTS[s.stage];
+  let plusCount = 0, minusCount = 0;
+  cl.plus.forEach((_,i)=>{ if(state.plusChecked[i]) plusCount++; });
+  cl.minus.forEach((_,i)=>{ if(state.minusChecked[i]) minusCount++; });
+  let stageBonus = 0, pickedIdeal = false;
+  if(state.round===1){
+    const picked = state.shuffledOptions[state.optionPick];
+    pickedIdeal = !!(picked && picked.ideal);
+    stageBonus = pickedIdeal ? 2 : 0;
+  }
+  const raw = plusCount - minusCount + stageBonus;
+  const maxScore = maxScoreFor(s.stage, state.round);
+  return { score: Math.max(0, raw), plusCount, minusCount, stageBonus, pickedIdeal, maxScore };
+}
+
+function showResult(){
+  const s = state.skenario;
+  const r = computeScore();
+  const stampText = (state.round===1 ? r.pickedIdeal : true) && r.minusCount===0 ? "Eksekusi Bersih" : "Perlu Diasah Lagi";
+  const stampClass = ((state.round===1 ? r.pickedIdeal : true) && r.minusCount===0) ? "" : "warn";
+
+  $('#result-content').innerHTML = `
+    <div class="card">
+      <span class="badge ${s.stage}" style="margin-bottom:8px;">${s.stage.toUpperCase()}</span>
+      <span class="stamp ${stampClass}" style="display:block; width:fit-content;">${stampText}</span>
+      <p style="font-size:13px;color:#4A4F5A;margin:10px 0 2px;">Contoh respons ideal:</p>
+      <div class="explain-box">${s.ideal}</div>
+    </div>
+    <div class="score-box">
+      <div class="score-num">${r.score} <span style="font-size:22px; color:rgba(246,241,228,0.6);">/ ${r.maxScore}</span></div>
+      <div class="score-label">SKOR RONDE ${state.round} — ${agentName().toUpperCase()} (Agent)</div>
+      <div class="score-breakdown">
+        <div>✅ ${r.plusCount} hal baik</div>
+        <div>🚩 ${r.minusCount} yang perlu dihindari</div>
+        ${state.round===1 ? `<div>🎯 ${r.pickedIdeal ? 'Pilihan tepat (+2)' : 'Pilihan bisa lebih baik'}</div>` : ''}
+      </div>
+    </div>
+    <button class="btn btn-gold" id="btn-simpan-skor">Simpan ke Papan Skor</button>
+    <button class="btn btn-ghost" id="btn-skenario-baru" style="margin-top:10px;">Tukar Peran / Ronde Baru</button>
+  `;
+  $('#btn-simpan-skor').addEventListener('click', simpanSkor);
+  $('#btn-skenario-baru').addEventListener('click', ()=>{
+    state.agentIsP = state.agentIsP===1 ? 2 : 1;
+    $all('#role-pick .role-opt').forEach(o=>o.classList.toggle('sel', parseInt(o.dataset.p)===state.agentIsP));
+    switchScreen('setup');
+  });
+}
+
+async function simpanSkor(){
+  const btn = $('#btn-simpan-skor');
+  if(btn){ btn.disabled = true; btn.textContent = 'Menyimpan...'; }
+  try{
+    const r = computeScore();
+    const key = 'pair:' + state.pairId.replace(/\s+/g,'_').toLowerCase();
+    let existing = null;
+    try{ existing = await storage.get(key, true); }catch(e){ existing = null; }
+    let data = existing ? JSON.parse(existing.value) : { pairId: state.pairId, p1: state.p1, p2: state.p2, rounds: [], total: 0, maxTotal: 0 };
+    data.rounds.push({ agent: agentName(), persona: personaName(), skenario: state.skenario.id, stage: state.skenario.stage, round: state.round, score: r.score, maxScore: r.maxScore, ts: Date.now() });
+    data.total = data.rounds.reduce((sum,x)=>sum+x.score,0);
+    data.maxTotal = data.rounds.reduce((sum,x)=>sum+(x.maxScore||0),0);
+    await storage.set(key, JSON.stringify(data), true);
+    showToast("Skor tersimpan di papan kelas!");
+    switchScreen('leaderboard');
+  }catch(e){
+    showToast("Gagal simpan skor, cek koneksi");
+    console.error(e);
+    if(btn){ btn.disabled = false; btn.textContent = 'Simpan ke Papan Skor'; }
+  }
+}
+
+/* ---------- LEADERBOARD ---------- */
+async function loadLeaderboard(){
+  const list = $('#lb-list');
+  list.innerHTML = '<div class="empty">Memuat...</div>';
+  try{
+    const idx = await storage.list('pair:', true);
+    const keys = idx && idx.keys ? idx.keys : [];
+    if(keys.length===0){
+      list.innerHTML = '<div class="empty">Belum ada skor tersimpan.<br>Selesaikan ronde lalu tap "Simpan ke Papan Skor".</div>';
+      refreshTimerDisplay();
+      return;
+    }
+    const entries = [];
+    for(const k of keys){
+      try{
+        const res = await storage.get(k, true);
+        if(res) entries.push(JSON.parse(res.value));
+      }catch(e){}
+    }
+    entries.sort((a,b)=>b.total-a.total);
+    list.innerHTML = entries.map((e,i)=>`
+      <div class="lb-row">
+        <div class="lb-rank ${i===0?'g1':''}">${i+1}</div>
+        <div style="flex:1;">
+          <div class="lb-name">${e.pairId}</div>
+          <div class="lb-meta">${e.p1} & ${e.p2} · ${e.rounds.length} ronde</div>
+        </div>
+        <div class="lb-score">${e.total}<span style="font-size:11px; color:#8a8f99; font-weight:600;"> / ${e.maxTotal||0}</span></div>
+      </div>
+    `).join('');
+  }catch(e){
+    list.innerHTML = '<div class="empty">Gagal memuat papan skor. Tap Refresh.</div>';
+    console.error(e);
+  }
+  refreshTimerDisplay();
+}
+$('#btn-refresh-lb').addEventListener('click', loadLeaderboard);
+
+/* ---------- SHARED TIMER ---------- */
+function fmtTime(sec){
+  if(sec<0) sec=0;
+  const m = Math.floor(sec/60), s = Math.floor(sec%60);
+  return String(m).padStart(2,'0')+':'+String(s).padStart(2,'0');
+}
+async function getTimerState(roundNum){
+  try{
+    const r = await storage.get('timer:round'+roundNum, true);
+    return r ? JSON.parse(r.value) : null;
+  }catch(e){ return null; }
+}
+async function refreshTimerDisplay(){
+  const roundNum = state.round || 1;
+  const t = await getTimerState(roundNum);
+  let display = '--:--';
+  if(t && t.running){
+    const elapsed = (Date.now() - t.startedAt)/1000;
+    const remaining = t.durationSec - elapsed;
+    display = remaining>0 ? fmtTime(remaining) : "00:00";
+  } else if(t && !t.running && t.remainingAtPause!==undefined){
+    display = fmtTime(t.remainingAtPause);
+  }
+  $('#timer-pill').textContent = '⏱ R'+roundNum+' ' + display;
+  const lbTimer = $('#lb-timer');
+  if(lbTimer) lbTimer.textContent = display;
+}
+setInterval(refreshTimerDisplay, 2000);
+
+async function loadProjectorScreen(){
+  // pick whichever round timer is currently running; default round 1
+  const t1 = await getTimerState(1);
+  const t2 = await getTimerState(2);
+  let activeRound = 1, t = t1;
+  if(t2 && t2.running){ activeRound = 2; t = t2; }
+  else if(t1 && t1.running){ activeRound = 1; t = t1; }
+  else if(t2 && t2.remainingAtPause){ activeRound = 2; t = t2; }
+
+  $('#proj-timer-label').textContent = activeRound===1 ? 'Ronde 1 — Pilihan Jawaban' : 'Ronde 2 — Jawab Bebas';
+  let display = '--:--';
+  if(t && t.running){
+    const elapsed = (Date.now() - t.startedAt)/1000;
+    const remaining = t.durationSec - elapsed;
+    display = remaining>0 ? fmtTime(remaining) : "00:00";
+  } else if(t && !t.running && t.remainingAtPause!==undefined){
+    display = fmtTime(t.remainingAtPause);
+  }
+  $('#proj-timer-num').textContent = display;
+
+  const list = $('#proj-lb-list');
+  try{
+    const idx = await storage.list('pair:', true);
+    const keys = idx && idx.keys ? idx.keys : [];
+    if(keys.length===0){
+      list.innerHTML = '<div class="empty" style="color:rgba(246,241,228,0.6);">Belum ada tim yang menyimpan skor.</div>';
+      return;
+    }
+    const entries = [];
+    for(const k of keys){
+      try{
+        const res = await storage.get(k, true);
+        if(res) entries.push(JSON.parse(res.value));
+      }catch(e){}
+    }
+    entries.sort((a,b)=>b.total-a.total);
+    list.innerHTML = entries.map((e,i)=>`
+      <div class="proj-lb-row">
+        <div class="proj-rank ${i===0?'g1':''}">${i+1}</div>
+        <div style="flex:1;">
+          <div class="proj-name">${e.pairId}</div>
+          <div class="proj-meta">${e.rounds.length} ronde dimainkan</div>
+        </div>
+        <div class="proj-score">${e.total}<span style="font-size:16px; opacity:0.55;"> / ${e.maxTotal||0}</span></div>
+      </div>
+    `).join('');
+  }catch(e){
+    list.innerHTML = '<div class="empty" style="color:rgba(246,241,228,0.6);">Gagal memuat papan skor.</div>';
+  }
+}
+$('#btn-exit-projector').addEventListener('click', ()=>switchScreen('admin'));
+
+/* ---------- ADMIN ---------- */
+const ADMIN_CODE = "LEGACY2026";
+$('#btn-admin-unlock').addEventListener('click', ()=>{
+  const code = $('#admin-code').value.trim();
+  if(code === ADMIN_CODE){
+    state.adminUnlocked = true;
+    $('#admin-locked').style.display = 'none';
+    $('#admin-panel').style.display = 'block';
+    loadAdminControlSettings();
+    renderPersonaAdminList();
+    renderChecklistEditors();
+    loadAdminTable();
+  } else {
+    showToast("Kode salah");
+  }
+});
+
+$all('.tab2').forEach(tab=>{
+  tab.addEventListener('click', ()=>{
+    $all('.tab2').forEach(t=>t.classList.remove('active'));
+    tab.classList.add('active');
+    $all('.admin-tab').forEach(p=>p.style.display='none');
+    $('#admin-tab-'+tab.dataset.tab).style.display='block';
+    if(tab.dataset.tab==='teams') loadAdminTable();
+  });
+});
+
+async function loadAdminControlSettings(){
+  $('#total-persona-count').textContent = PERSONAS.length;
+  try{
+    const r = await storage.get('settings:active-count', true);
+    $('#admin-active-num').value = r ? r.value : PERSONAS.length;
+  }catch(e){ $('#admin-active-num').value = PERSONAS.length; }
+}
+
+$('#btn-save-active').addEventListener('click', async ()=>{
+  const val = parseInt($('#admin-active-num').value) || PERSONAS.length;
+  try{
+    await storage.set('settings:active-count', String(val), true);
+    showToast("Diterapkan — pemain akan pakai ini di ronde berikutnya");
+  }catch(e){ showToast("Gagal menyimpan pengaturan"); }
+});
+
+$all('[data-round][data-act]').forEach(btn=>{
+  btn.addEventListener('click', async ()=>{
+    const roundNum = btn.dataset.round;
+    const act = btn.dataset.act;
+    const minInput = roundNum==='1' ? $('#admin-r1-min') : $('#admin-r2-min');
+    if(act==='start'){
+      const mins = parseFloat(minInput.value) || 10;
+      const existing = await getTimerState(roundNum);
+      let durationSec = mins*60;
+      if(existing && existing.remainingAtPause!==undefined && !existing.running){
+        durationSec = existing.remainingAtPause;
+      }
+      await storage.set('timer:round'+roundNum, JSON.stringify({running:true, startedAt: Date.now(), durationSec}), true);
+      showToast("Timer Ronde "+roundNum+" dimulai");
+    } else if(act==='pause'){
+      const t = await getTimerState(roundNum);
+      if(t && t.running){
+        const elapsed = (Date.now()-t.startedAt)/1000;
+        const remaining = Math.max(0, t.durationSec - elapsed);
+        await storage.set('timer:round'+roundNum, JSON.stringify({running:false, remainingAtPause: remaining}), true);
+        showToast("Timer Ronde "+roundNum+" dijeda");
+      }
+    } else if(act==='reset'){
+      await storage.set('timer:round'+roundNum, JSON.stringify({running:false, remainingAtPause:0}), true);
+      showToast("Timer Ronde "+roundNum+" direset");
+    }
+    refreshTimerDisplay();
+  });
+});
+
+$('#btn-open-projector').addEventListener('click', ()=>{
+  switchScreen('projector');
+});
+
+/* --- persona admin CRUD --- */
+let adminEditingId = null;
+
+function renderPersonaAdminList(){
+  const container = $('#persona-admin-list');
+  const stages = ["cold","warm","hot"];
+  let html = '';
+  stages.forEach(stage=>{
+    const items = PERSONAS.filter(p=>p.stage===stage);
+    if(items.length===0) return;
+    html += `<p class="section-label" style="margin-top:14px;">${stage.toUpperCase()} (${items.length})</p>`;
+    items.forEach(p=>{
+      if(adminEditingId === p.id){
+        html += personaEditFormHtml(p);
+      } else {
+        html += `
+          <div class="persona-row">
+            <div class="persona-row-top">
+              <span class="badge ${p.stage}">${p.stage}</span>
+              <div class="row-btns">
+                <button class="icon-btn" data-edit="${p.id}">Edit</button>
+                <button class="icon-btn" data-del="${p.id}" style="color:var(--hot);">Hapus</button>
+              </div>
+            </div>
+            <div class="persona-preview"><b>${p.id}</b> — ${p.konteks}</div>
+          </div>`;
+      }
+    });
+  });
+  container.innerHTML = html || '<div class="empty">Belum ada persona.</div>';
+  $all('[data-edit]').forEach(b=>b.addEventListener('click', ()=>{ adminEditingId = b.dataset.edit; renderPersonaAdminList(); }));
+  $all('[data-del]').forEach(b=>b.addEventListener('click', async ()=>{
+    if(!confirm('Hapus persona ini?')) return;
+    PERSONAS = PERSONAS.filter(p=>p.id!==b.dataset.del);
+    await savePersonas();
+    showToast("Persona dihapus");
+    loadAdminControlSettings();
+    renderPersonaAdminList();
+  }));
+  $all('.persona-edit-save').forEach(b=>b.addEventListener('click', savePersonaEdit));
+  $all('.persona-edit-cancel').forEach(b=>b.addEventListener('click', ()=>{ adminEditingId=null; renderPersonaAdminList(); }));
+}
+
+function personaEditFormHtml(p){
+  return `
+    <div class="persona-row" style="border-color:var(--gold);">
+      <div class="field">
+        <label>Kode</label>
+        <input type="text" id="edit-id" value="${p.id}">
+      </div>
+      <div class="field">
+        <label>Tahap</label>
+        <select id="edit-stage">
+          <option value="cold" ${p.stage==='cold'?'selected':''}>Cold</option>
+          <option value="warm" ${p.stage==='warm'?'selected':''}>Warm</option>
+          <option value="hot" ${p.stage==='hot'?'selected':''}>Hot</option>
+        </select>
+      </div>
+      <div class="field"><label>Konteks</label><textarea id="edit-konteks" rows="2">${p.konteks}</textarea></div>
+      <div class="field"><label>Ucapan/tindakan Persona</label><textarea id="edit-prospek" rows="2">${p.prospek}</textarea></div>
+      <div class="field"><label>Respons Ideal (ditampilkan sebagai contoh)</label><textarea id="edit-ideal" rows="2">${p.ideal}</textarea></div>
+      <p class="section-label">Pilihan Jawaban (Ronde 1) — tandai mana yang ideal</p>
+      ${[0,1,2].map(i=>{
+        const o = p.options[i] || {text:"", ideal:false};
+        return `<div class="opt-edit-row">
+          <input type="text" id="edit-opt-${i}" value="${o.text.replace(/"/g,'&quot;')}" placeholder="Pilihan ${i+1}">
+          <label class="radio-ideal"><input type="radio" name="edit-ideal-opt" value="${i}" ${o.ideal?'checked':''}> Ideal</label>
+        </div>`;
+      }).join('')}
+      <div style="display:flex; gap:8px; margin-top:8px;">
+        <button class="btn btn-primary btn-sm persona-edit-save" style="flex:1;">Simpan</button>
+        <button class="btn btn-ghost btn-sm persona-edit-cancel" style="flex:1;">Batal</button>
+      </div>
+    </div>`;
+}
+
+async function savePersonaEdit(){
+  const newId = $('#edit-id').value.trim();
+  const stage = $('#edit-stage').value;
+  const konteks = $('#edit-konteks').value.trim();
+  const prospek = $('#edit-prospek').value.trim();
+  const ideal = $('#edit-ideal').value.trim();
+  const idealPick = document.querySelector('input[name="edit-ideal-opt"]:checked');
+  const idealIdx = idealPick ? parseInt(idealPick.value) : 0;
+  const options = [0,1,2].map(i=>({ text: $('#edit-opt-'+i).value.trim(), ideal: i===idealIdx }));
+  if(!newId || !konteks || !prospek || !ideal){ showToast("Lengkapi semua kolom dulu"); return; }
+
+  const idx = PERSONAS.findIndex(p=>p.id===adminEditingId);
+  const updated = { id:newId, stage, konteks, prospek, ideal, options };
+  if(idx>=0) PERSONAS[idx] = updated; else PERSONAS.push(updated);
+  await savePersonas();
+  adminEditingId = null;
+  showToast("Persona disimpan");
+  loadAdminControlSettings();
+  renderPersonaAdminList();
+}
+
+$('#btn-add-persona').addEventListener('click', ()=>{
+  const newId = 'NEW-' + Math.random().toString(36).slice(2,6).toUpperCase();
+  const blank = { id:newId, stage:"cold", konteks:"", prospek:"", ideal:"", options:[{text:"",ideal:true},{text:"",ideal:false},{text:"",ideal:false}] };
+  PERSONAS.push(blank);
+  adminEditingId = newId;
+  renderPersonaAdminList();
+});
+
+/* --- checklist admin editor --- */
+function renderChecklistEditors(){
+  ["cold","warm","hot"].forEach(stage=>{
+    $('#cl-'+stage+'-plus').value = CHECKLISTS[stage].plus.join('\n');
+    $('#cl-'+stage+'-minus').value = CHECKLISTS[stage].minus.join('\n');
+  });
+}
+$all('[data-stage]').forEach(btn=>{
+  btn.addEventListener('click', async ()=>{
+    const stage = btn.dataset.stage;
+    const plus = $('#cl-'+stage+'-plus').value.split('\n').map(s=>s.trim()).filter(Boolean);
+    const minus = $('#cl-'+stage+'-minus').value.split('\n').map(s=>s.trim()).filter(Boolean);
+    CHECKLISTS[stage] = { plus, minus };
+    await saveChecklists();
+    showToast("Checklist "+stage+" disimpan");
+  });
+});
+
+/* --- teams table --- */
+async function loadAdminTable(){
+  const tbody = $('#admin-tbody');
+  tbody.innerHTML = '<tr><td colspan="4" class="empty">Memuat...</td></tr>';
+  try{
+    const idx = await storage.list('pair:', true);
+    const keys = idx && idx.keys ? idx.keys : [];
+    if(keys.length===0){
+      tbody.innerHTML = '<tr><td colspan="4" class="empty">Belum ada tim bermain.</td></tr>';
+      return;
+    }
+    const entries = [];
+    for(const k of keys){
+      try{
+        const res = await storage.get(k, true);
+        if(res) entries.push(JSON.parse(res.value));
+      }catch(e){}
+    }
+    entries.sort((a,b)=>b.total-a.total);
+    tbody.innerHTML = entries.map(e=>`
+      <tr>
+        <td><b>${e.pairId}</b></td>
+        <td>${e.p1} & ${e.p2}</td>
+        <td>${e.rounds.length}</td>
+        <td><b>${e.total}</b> / ${e.maxTotal||0}</td>
+      </tr>`).join('');
+  }catch(e){
+    tbody.innerHTML = '<tr><td colspan="4" class="empty">Gagal memuat data.</td></tr>';
+  }
+}
+$('#btn-admin-refresh').addEventListener('click', loadAdminTable);
+
+$('#btn-reset-scores').addEventListener('click', async ()=>{
+  if(!confirm('Yakin mau hapus SEMUA skor & tim tersimpan? Aksi ini tidak bisa dibatalkan.')) return;
+  const btn = $('#btn-reset-scores');
+  btn.disabled = true; btn.textContent = 'Menghapus...';
+  try{
+    const idx = await storage.list('pair:');
+    const keys = idx && idx.keys ? idx.keys : [];
+    for(const k of keys){
+      try{ await storage.delete(k); }catch(e){}
+    }
+    showToast('Semua skor sudah direset.');
+    loadAdminTable();
+  }catch(e){
+    showToast('Gagal reset, cek koneksi');
+    console.error(e);
+  }finally{
+    btn.disabled = false; btn.textContent = '🗑️ Reset Semua Skor';
+  }
+});
+
+$('#lb-list').innerHTML = '<div class="empty">Tap tab "Papan Skor" untuk memuat data.</div>';
+
+/* ---------- INIT ---------- */
+(async ()=>{
+  await loadPersonas();
+  await loadChecklists();
+  refreshTimerDisplay();
+})();
+</script>
+</body>
+</html>
