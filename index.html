@@ -251,8 +251,8 @@
             <div class="ghead minus">− Hal yang sebaiknya tidak dilakukan</div>
             <div id="minus-list"></div>
           </div>
-          <button class="btn btn-primary" id="btn-cek-jawaban">Selesai Menilai & Lihat Skor</button>
         </div>
+        <button class="btn btn-primary" id="btn-cek-jawaban" style="display:none; margin-top:14px;">Lihat Skor</button>
       </div>
     </section>
 
@@ -759,7 +759,7 @@ function renderGame(){
   if(state.round === 1){
     $('#round1-block').style.display = 'block';
     $('#round2-note').style.display = 'none';
-    $('#scorer-name-label').textContent = personaName() + ' (Persona)';
+    $('#persona-scoring-block').style.display = 'none';
 
     const optContainer = $('#options-container');
     optContainer.innerHTML = state.shuffledOptions.map((o,i)=>`
@@ -771,31 +771,34 @@ function renderGame(){
         renderGame();
       });
     });
-    $('#persona-scoring-block').style.display = state.optionPick!==null ? 'block' : 'none';
+    $('#btn-cek-jawaban').textContent = 'Lihat Skor';
+    $('#btn-cek-jawaban').style.display = state.optionPick!==null ? 'block' : 'none';
   } else {
     $('#round1-block').style.display = 'none';
     $('#round2-note').style.display = 'block';
     $('#round2-note').textContent = agentName() + ', ucapkan responsmu sendiri dengan bahasamu (tanpa pilihan jawaban). Setelah selesai bicara, isi checklist ini sendiri secara jujur.';
     $('#scorer-name-label').textContent = agentName() + ' (Agent, menilai diri sendiri)';
     $('#persona-scoring-block').style.display = 'block';
-  }
+    $('#btn-cek-jawaban').textContent = 'Selesai Menilai & Lihat Skor';
+    $('#btn-cek-jawaban').style.display = 'block';
 
-  $('#plus-list').innerHTML = cl.plus.map((t,i)=>`
-    <div class="check-row plus-row ${state.plusChecked[i]?'on':''}" data-i="${i}">
-      <div class="checkbox">${state.plusChecked[i]?'✓':''}</div>
-      <div class="check-text">${t}</div>
-    </div>`).join('');
-  $('#minus-list').innerHTML = cl.minus.map((t,i)=>`
-    <div class="check-row minus-row ${state.minusChecked[i]?'on':''}" data-i="${i}">
-      <div class="checkbox">${state.minusChecked[i]?'✓':''}</div>
-      <div class="check-text">${t}</div>
-    </div>`).join('');
-  $all('#plus-list .check-row').forEach(row=>{
-    row.addEventListener('click', ()=>{ state.plusChecked[row.dataset.i] = !state.plusChecked[row.dataset.i]; renderGame(); });
-  });
-  $all('#minus-list .check-row').forEach(row=>{
-    row.addEventListener('click', ()=>{ state.minusChecked[row.dataset.i] = !state.minusChecked[row.dataset.i]; renderGame(); });
-  });
+    $('#plus-list').innerHTML = cl.plus.map((t,i)=>`
+      <div class="check-row plus-row ${state.plusChecked[i]?'on':''}" data-i="${i}">
+        <div class="checkbox">${state.plusChecked[i]?'✓':''}</div>
+        <div class="check-text">${t}</div>
+      </div>`).join('');
+    $('#minus-list').innerHTML = cl.minus.map((t,i)=>`
+      <div class="check-row minus-row ${state.minusChecked[i]?'on':''}" data-i="${i}">
+        <div class="checkbox">${state.minusChecked[i]?'✓':''}</div>
+        <div class="check-text">${t}</div>
+      </div>`).join('');
+    $all('#plus-list .check-row').forEach(row=>{
+      row.addEventListener('click', ()=>{ state.plusChecked[row.dataset.i] = !state.plusChecked[row.dataset.i]; renderGame(); });
+    });
+    $all('#minus-list .check-row').forEach(row=>{
+      row.addEventListener('click', ()=>{ state.minusChecked[row.dataset.i] = !state.minusChecked[row.dataset.i]; renderGame(); });
+    });
+  }
 }
 
 $('#btn-cek-jawaban').addEventListener('click', ()=>{
@@ -805,31 +808,34 @@ $('#btn-cek-jawaban').addEventListener('click', ()=>{
 
 function maxScoreFor(stage, roundNum){
   const cl = CHECKLISTS[stage];
-  return cl.plus.length + (roundNum===1 ? 2 : 0);
+  return roundNum===1 ? 2 : cl.plus.length;
 }
 
 function computeScore(){
   const s = state.skenario;
   const cl = CHECKLISTS[s.stage];
-  let plusCount = 0, minusCount = 0;
-  cl.plus.forEach((_,i)=>{ if(state.plusChecked[i]) plusCount++; });
-  cl.minus.forEach((_,i)=>{ if(state.minusChecked[i]) minusCount++; });
-  let stageBonus = 0, pickedIdeal = false;
+  let plusCount = 0, minusCount = 0, stageBonus = 0, pickedIdeal = false;
   if(state.round===1){
     const picked = state.shuffledOptions[state.optionPick];
     pickedIdeal = !!(picked && picked.ideal);
     stageBonus = pickedIdeal ? 2 : 0;
+  } else {
+    cl.plus.forEach((_,i)=>{ if(state.plusChecked[i]) plusCount++; });
+    cl.minus.forEach((_,i)=>{ if(state.minusChecked[i]) minusCount++; });
   }
   const raw = plusCount - minusCount + stageBonus;
   const maxScore = maxScoreFor(s.stage, state.round);
-  return { score: Math.max(0, raw), plusCount, minusCount, stageBonus, pickedIdeal, maxScore };
+  return { score: raw, plusCount, minusCount, stageBonus, pickedIdeal, maxScore };
 }
 
 function showResult(){
   const s = state.skenario;
   const r = computeScore();
-  const stampText = (state.round===1 ? r.pickedIdeal : true) && r.minusCount===0 ? "Eksekusi Bersih" : "Perlu Diasah Lagi";
-  const stampClass = ((state.round===1 ? r.pickedIdeal : true) && r.minusCount===0) ? "" : "warn";
+  const stampText = (state.round===1 ? r.pickedIdeal : r.minusCount===0) ? "Eksekusi Bersih" : "Perlu Diasah Lagi";
+  const stampClass = (state.round===1 ? r.pickedIdeal : r.minusCount===0) ? "" : "warn";
+  const breakdownLines = state.round===1
+    ? [`🎯 ${r.pickedIdeal ? 'Pilihan tepat (+2)' : 'Pilihan bisa lebih baik (+0)'}`]
+    : [`✅ ${r.plusCount} hal baik`, `🚩 ${r.minusCount} red flag${r.minusCount!==1?'s':''} (−${r.minusCount})`];
 
   $('#result-content').innerHTML = `
     <div class="card">
@@ -839,12 +845,10 @@ function showResult(){
       <div class="explain-box">${s.ideal}</div>
     </div>
     <div class="score-box">
-      <div class="score-num">${r.score} <span style="font-size:22px; color:rgba(246,241,228,0.6);">/ ${r.maxScore}</span></div>
+      <div class="score-num" style="${r.score<0?'color:#ff6b5e;':''}">${r.score} <span style="font-size:22px; color:rgba(246,241,228,0.6);">/ ${r.maxScore}</span></div>
       <div class="score-label">SKOR RONDE ${state.round} — ${agentName().toUpperCase()} (Agent)</div>
       <div class="score-breakdown">
-        <div>✅ ${r.plusCount} hal baik</div>
-        <div>🚩 ${r.minusCount} yang perlu dihindari</div>
-        ${state.round===1 ? `<div>🎯 ${r.pickedIdeal ? 'Pilihan tepat (+2)' : 'Pilihan bisa lebih baik'}</div>` : ''}
+        ${breakdownLines.map(l=>`<div>${l}</div>`).join('')}
       </div>
       <div id="save-status" class="shared-note" style="color:rgba(246,241,228,0.75); margin-top:8px;">Menyimpan ke papan skor...</div>
     </div>
@@ -951,6 +955,11 @@ function computeRemaining(t){
   }
   return null;
 }
+let playerVibeState = {1:{lastSec:null, upFired:false}, 2:{lastSec:null, upFired:false}};
+function vibrate(pattern){
+  try{ if(navigator.vibrate) navigator.vibrate(pattern); }catch(e){}
+}
+
 async function refreshTimerDisplay(){
   const roundNum = state.round || 1;
   const t = await getTimerState(roundNum);
@@ -961,23 +970,59 @@ async function refreshTimerDisplay(){
   pill.textContent = '⏱ R'+roundNum+' ' + display;
   pill.classList.remove('warning','critical');
   const banner = $('#game-timer-warning');
+  const vibeState = playerVibeState[roundNum];
   if(t && t.running && remaining!==null){
     if(remaining<=0){
       pill.classList.add('critical');
       if(banner){ banner.style.display='block'; banner.className='timer-warning-banner timeup'; banner.textContent='⏰ WAKTU HABIS!'; }
+      if(!vibeState.upFired){ vibrate([200,80,200,80,400]); vibeState.upFired = true; }
     } else if(remaining<=3){
       pill.classList.add('critical');
-      if(banner){ banner.style.display='block'; banner.className='timer-warning-banner critical'; banner.textContent = Math.ceil(remaining); }
+      const sec = Math.ceil(remaining);
+      if(banner){ banner.style.display='block'; banner.className='timer-warning-banner critical'; banner.textContent = sec; }
+      if(vibeState.lastSec !== sec){ vibrate([120]); vibeState.lastSec = sec; }
     } else if(remaining<=30){
       pill.classList.add('warning');
       if(banner){ banner.style.display='block'; banner.className='timer-warning-banner'; banner.textContent = '⏱ ' + Math.ceil(remaining) + ' detik lagi!'; }
-    } else if(banner){ banner.style.display='none'; }
-  } else if(banner){ banner.style.display='none'; }
+      vibeState.lastSec = null;
+    } else {
+      if(banner) banner.style.display='none';
+      vibeState.lastSec = null;
+    }
+  } else {
+    if(banner) banner.style.display='none';
+    vibeState.lastSec = null;
+    vibeState.upFired = false;
+  }
 
   const lbTimer = $('#lb-timer');
   if(lbTimer) lbTimer.textContent = display;
 }
 setInterval(refreshTimerDisplay, 1000);
+
+let projAlarmPlayed = {1:false, 2:false};
+let alarmAudioCtx = null;
+function playAlarmSound(){
+  try{
+    if(!alarmAudioCtx) alarmAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const ctx = alarmAudioCtx;
+    if(ctx.state === 'suspended') ctx.resume();
+    const now = ctx.currentTime;
+    for(let i=0;i<4;i++){
+      const t0 = now + i*0.32;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'square';
+      osc.frequency.setValueAtTime(i%2===0 ? 880 : 660, t0);
+      gain.gain.setValueAtTime(0.0001, t0);
+      gain.gain.linearRampToValueAtTime(0.35, t0+0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, t0+0.28);
+      osc.connect(gain); gain.connect(ctx.destination);
+      osc.start(t0);
+      osc.stop(t0+0.3);
+    }
+  }catch(e){ console.error('alarm sound failed', e); }
+}
 
 async function loadProjectorScreen(){
   // pick whichever round timer is currently running; default round 1
@@ -993,6 +1038,7 @@ async function loadProjectorScreen(){
   const wrap = $('.proj-wrap');
   wrap.classList.remove('time-warning','time-critical','time-up');
   let display = remaining===null ? '--:--' : fmtTime(remaining);
+  const isTimeUp = !!(t && t.running && remaining!==null && remaining<=0);
   if(t && t.running && remaining!==null){
     if(remaining<=0){
       display = 'WAKTU HABIS';
@@ -1003,6 +1049,12 @@ async function loadProjectorScreen(){
     } else if(remaining<=30){
       wrap.classList.add('time-warning');
     }
+  }
+  if(isTimeUp && !projAlarmPlayed[activeRound]){
+    playAlarmSound();
+    projAlarmPlayed[activeRound] = true;
+  } else if(!isTimeUp){
+    projAlarmPlayed[activeRound] = false;
   }
   $('#proj-timer-num').textContent = display;
 
@@ -1122,6 +1174,10 @@ $all('[data-round][data-act]').forEach(btn=>{
 });
 
 $('#btn-open-projector').addEventListener('click', ()=>{
+  try{
+    if(!alarmAudioCtx) alarmAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if(alarmAudioCtx.state === 'suspended') alarmAudioCtx.resume();
+  }catch(e){}
   switchScreen('projector');
 });
 
