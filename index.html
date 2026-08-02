@@ -144,6 +144,9 @@
   .proj-timer-box{ background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.15); border-radius:18px; padding:18px 24px; text-align:center; margin-bottom:28px; }
   .proj-timer-label{ font-family:'Space Mono',monospace; font-size:12px; letter-spacing:.12em; text-transform:uppercase; color:var(--gold-soft); margin-bottom:4px;}
   .proj-timer-num{ font-family:'Space Mono',monospace; font-weight:700; font-size:64px; color:var(--gold); line-height:1; }
+  .proj-mini-controls{ display:flex; gap:6px; justify-content:center; margin-top:10px; }
+  .proj-mini-btn{ font-family:inherit; font-size:11px; padding:5px 10px; border-radius:8px; border:1px solid rgba(246,241,228,0.25); background:rgba(255,255,255,0.06); color:var(--gold-soft); cursor:pointer; }
+  .proj-mini-btn:active{ background:rgba(255,255,255,0.14); }
   .proj-lb-row{ display:flex; align-items:center; gap:20px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); border-radius:14px; padding:16px 22px; margin-bottom:12px; }
   .proj-rank{ font-family:'Lora',serif; font-weight:700; font-size:26px; color:var(--gold-soft); width:44px; text-align:center; }
   .proj-rank.g1{color:var(--gold); font-size:32px;}
@@ -193,20 +196,7 @@
           <label>Nama Pemain 2</label>
           <input type="text" id="input-p2" placeholder="mis. Sinta">
         </div>
-        <div class="field">
-          <label>Ronde ini: siapa yang jadi Agent?</label>
-          <div class="role-pick" id="role-pick">
-            <div class="role-opt" data-p="1">Pemain 1</div>
-            <div class="role-opt" data-p="2">Pemain 2</div>
-          </div>
-        </div>
-        <div class="field">
-          <label>Pilih Ronde</label>
-          <div class="role-pick" id="round-pick">
-            <div class="role-opt" data-r="1">Ronde 1 — Pilihan Jawaban</div>
-            <div class="role-opt" data-r="2">Ronde 2 — Jawab Bebas</div>
-          </div>
-        </div>
+        <div class="session-note" id="setup-round-note" style="margin-bottom:12px;">Kalian akan mulai di Ronde 1</div>
         <button class="btn btn-primary" id="btn-start-round">Ambil Skenario</button>
       </div>
     </section>
@@ -281,6 +271,11 @@
         <div class="proj-timer-box">
           <div class="proj-timer-label" id="proj-timer-label">Ronde 1 — Pilihan Jawaban</div>
           <div class="proj-timer-num" id="proj-timer-num">--:--</div>
+          <div class="proj-mini-controls">
+            <button class="proj-mini-btn" id="proj-btn-start-r1">▶ Mulai R1</button>
+            <button class="proj-mini-btn" id="proj-btn-pause">⏸ Pause</button>
+            <button class="proj-mini-btn" id="proj-btn-start-r2">⏭ Lanjut R2</button>
+          </div>
         </div>
         <div id="proj-lb-list"></div>
       </div>
@@ -657,20 +652,28 @@ $('#btn-open-admin').addEventListener('click', ()=>switchScreen('admin'));
 $('#btn-admin-back').addEventListener('click', ()=>switchScreen('setup'));
 
 /* ---------- SETUP ---------- */
-$all('#role-pick .role-opt').forEach(el=>{
-  el.addEventListener('click', ()=>{
-    state.agentIsP = parseInt(el.dataset.p);
-    $all('#role-pick .role-opt').forEach(o=>o.classList.toggle('sel', parseInt(o.dataset.p)===state.agentIsP));
-  });
-});
-$all('#round-pick .role-opt').forEach(el=>{
-  el.addEventListener('click', ()=>{
-    state.round = parseInt(el.dataset.r);
-    $all('#round-pick .role-opt').forEach(o=>o.classList.toggle('sel', parseInt(o.dataset.r)===state.round));
-  });
-});
-// default selections
-$('#round-pick .role-opt[data-r="1"]').classList.add('sel');
+async function isRoundTimerActive(roundNum){
+  const t = await getTimerState(roundNum);
+  const remaining = computeRemaining(t);
+  return !!(t && t.running && remaining!==null && remaining>0);
+}
+async function isRoundTimeUp(roundNum){
+  const t = await getTimerState(roundNum);
+  const remaining = computeRemaining(t);
+  return !!(t && remaining!==null && remaining<=0);
+}
+async function getCurrentRoundForNewGame(){
+  const r1up = await isRoundTimeUp(1);
+  return r1up ? 2 : 1;
+}
+async function refreshSetupNote(){
+  const note = $('#setup-round-note');
+  if(!note) return;
+  const r = await getCurrentRoundForNewGame();
+  note.textContent = 'Kalian akan mulai di Ronde ' + r;
+}
+refreshSetupNote();
+setInterval(refreshSetupNote, 3000);
 
 async function getActiveCount(roundNum){
   try{
@@ -713,12 +716,25 @@ async function pickScenarioForRound(roundNum){
   return found || PERSONAS[0];
 }
 
+async function ensurePairRegistered(){
+  try{
+    const key = pairKey();
+    const existing = await storage.get(key, true);
+    if(!existing){
+      await storage.set(key, JSON.stringify({ pairId: state.pairId, p1: state.p1, p2: state.p2, rounds: [], total: 0, maxTotal: 0 }), true);
+    }
+  }catch(e){ console.error(e); }
+}
+
 $('#btn-start-round').addEventListener('click', async ()=>{
   const p1 = $('#input-p1').value.trim();
   const p2 = $('#input-p2').value.trim();
   if(!p1 || !p2){ showToast("Isi kedua nama dulu"); return; }
-  if(!state.agentIsP){ showToast("Pilih siapa yang jadi Agent"); return; }
   state.pairId = p1 + " & " + p2; state.p1 = p1; state.p2 = p2;
+  state.agentIsP = 1;
+  state.round = await getCurrentRoundForNewGame();
+
+  await ensurePairRegistered();
 
   state.skenario = await pickScenarioForRound(state.round);
   state.shuffledOptions = [...state.skenario.options].sort(()=>Math.random()-0.5);
@@ -739,9 +755,18 @@ function renderGame(){
   $('#game-content').style.display = s ? 'block' : 'none';
   if(!s) return;
 
-  getActiveCount(state.round).then(n=>{
-    $('#game-session-note').textContent = 'Ronde ' + state.round + ' · Jumlah persona: ' + n;
-  });
+  (async ()=>{
+    const n = await getActiveCount(state.round);
+    let done = 0;
+    try{
+      const existing = await storage.get(pairKey(), true);
+      if(existing){
+        const data = JSON.parse(existing.value);
+        done = (data.rounds||[]).filter(x=>x.round===state.round).length;
+      }
+    }catch(e){}
+    $('#game-session-note').textContent = 'Ronde ' + state.round + ' · Persona: ' + done + '/' + n;
+  })();
 
   $('#scene-num').textContent = 'SKENARIO #' + s.id;
   $('#scene-ctx').textContent = s.konteks;
@@ -801,8 +826,13 @@ function renderGame(){
   }
 }
 
-$('#btn-cek-jawaban').addEventListener('click', ()=>{
-  showResult();
+$('#btn-cek-jawaban').addEventListener('click', async ()=>{
+  const active = await isRoundTimerActive(state.round);
+  if(!active){
+    showToast("Timer Ronde " + state.round + " belum jalan / sudah berhenti — skor tidak bisa dikirim");
+    return;
+  }
+  await showResult();
   switchScreen('result');
 });
 
@@ -828,7 +858,7 @@ function computeScore(){
   return { score: raw, plusCount, minusCount, stageBonus, pickedIdeal, maxScore };
 }
 
-function showResult(){
+async function showResult(){
   const s = state.skenario;
   const r = computeScore();
   const stampText = (state.round===1 ? r.pickedIdeal : r.minusCount===0) ? "Eksekusi Bersih" : "Perlu Diasah Lagi";
@@ -836,6 +866,7 @@ function showResult(){
   const breakdownLines = state.round===1
     ? [`🎯 ${r.pickedIdeal ? 'Pilihan tepat (+2)' : 'Pilihan bisa lebih baik (+0)'}`]
     : [`✅ ${r.plusCount} hal baik`, `🚩 ${r.minusCount} red flag${r.minusCount!==1?'s':''} (−${r.minusCount})`];
+  const roundEnded = await isRoundTimeUp(state.round);
 
   $('#result-content').innerHTML = `
     <div class="card">
@@ -853,27 +884,28 @@ function showResult(){
       <div id="save-status" class="shared-note" style="color:rgba(246,241,228,0.75); margin-top:8px;">Menyimpan ke papan skor...</div>
     </div>
     <button class="btn btn-gold" id="btn-swap-role">🔁 Tukar Peran</button>
-    <button class="btn btn-ghost" id="btn-new-round" style="margin-top:10px;">➡️ Ronde Baru</button>
+    ${roundEnded ? `<button class="btn btn-ghost" id="btn-new-round" style="margin-top:10px;">➡️ Ronde Baru</button>` : `<p class="shared-note" style="margin-top:10px;">Ronde baru akan terbuka otomatis saat waktu ronde ini habis.</p>`}
   `;
   simpanSkor();
   $('#btn-swap-role').addEventListener('click', async ()=>{
     state.agentIsP = state.agentIsP===1 ? 2 : 1;
-    $all('#role-pick .role-opt').forEach(o=>o.classList.toggle('sel', parseInt(o.dataset.p)===state.agentIsP));
     state.skenario = await pickScenarioForRound(state.round);
     state.shuffledOptions = [...state.skenario.options].sort(()=>Math.random()-0.5);
     state.optionPick = null; state.plusChecked = {}; state.minusChecked = {};
     renderGame();
     switchScreen('game');
   });
-  $('#btn-new-round').addEventListener('click', async ()=>{
-    state.round = state.round===1 ? 2 : 1;
-    $all('#round-pick .role-opt').forEach(o=>o.classList.toggle('sel', parseInt(o.dataset.r)===state.round));
-    state.skenario = await pickScenarioForRound(state.round);
-    state.shuffledOptions = [...state.skenario.options].sort(()=>Math.random()-0.5);
-    state.optionPick = null; state.plusChecked = {}; state.minusChecked = {};
-    renderGame();
-    switchScreen('game');
-  });
+  const newRoundBtn = $('#btn-new-round');
+  if(newRoundBtn){
+    newRoundBtn.addEventListener('click', async ()=>{
+      state.round = state.round===1 ? 2 : 1;
+      state.skenario = await pickScenarioForRound(state.round);
+      state.shuffledOptions = [...state.skenario.options].sort(()=>Math.random()-0.5);
+      state.optionPick = null; state.plusChecked = {}; state.minusChecked = {};
+      renderGame();
+      switchScreen('game');
+    });
+  }
 }
 
 async function simpanSkor(){
@@ -975,7 +1007,22 @@ async function refreshTimerDisplay(){
     if(remaining<=0){
       pill.classList.add('critical');
       if(banner){ banner.style.display='block'; banner.className='timer-warning-banner timeup'; banner.textContent='⏰ WAKTU HABIS!'; }
-      if(!vibeState.upFired){ vibrate([200,80,200,80,400]); vibeState.upFired = true; }
+      if(!vibeState.upFired){
+        vibrate([200,80,200,80,400]);
+        vibeState.upFired = true;
+        if(roundNum===1 && state.round===1){
+          state.round = 2;
+          showToast('Waktu Ronde 1 habis! Pindah ke Ronde 2.');
+          if(state.skenario){
+            pickScenarioForRound(2).then(sk=>{
+              state.skenario = sk;
+              state.shuffledOptions = [...sk.options].sort(()=>Math.random()-0.5);
+              state.optionPick = null; state.plusChecked = {}; state.minusChecked = {};
+              renderGame();
+            });
+          }
+        }
+      }
     } else if(remaining<=3){
       pill.classList.add('critical');
       const sec = Math.ceil(remaining);
@@ -1143,35 +1190,53 @@ $('#btn-save-active').addEventListener('click', async ()=>{
   }catch(e){ showToast("Gagal menyimpan pengaturan"); }
 });
 
+async function startRoundTimer(roundNum){
+  const minInput = roundNum==='1'||roundNum===1 ? $('#admin-r1-min') : $('#admin-r2-min');
+  const mins = parseFloat(minInput && minInput.value) || 10;
+  const existing = await getTimerState(roundNum);
+  let durationSec = mins*60;
+  if(existing && existing.remainingAtPause!==undefined && !existing.running){
+    durationSec = existing.remainingAtPause;
+  }
+  await storage.set('timer:round'+roundNum, JSON.stringify({running:true, startedAt: Date.now(), durationSec}), true);
+  showToast("Timer Ronde "+roundNum+" dimulai");
+  refreshTimerDisplay();
+}
+async function pauseRoundTimer(roundNum){
+  const t = await getTimerState(roundNum);
+  if(t && t.running){
+    const elapsed = (Date.now()-t.startedAt)/1000;
+    const remaining = Math.max(0, t.durationSec - elapsed);
+    await storage.set('timer:round'+roundNum, JSON.stringify({running:false, remainingAtPause: remaining}), true);
+    showToast("Timer Ronde "+roundNum+" dijeda");
+  }
+  refreshTimerDisplay();
+}
+async function resetRoundTimer(roundNum){
+  await storage.set('timer:round'+roundNum, JSON.stringify({running:false, remainingAtPause:0}), true);
+  showToast("Timer Ronde "+roundNum+" direset");
+  refreshTimerDisplay();
+}
+
 $all('[data-round][data-act]').forEach(btn=>{
   btn.addEventListener('click', async ()=>{
     const roundNum = btn.dataset.round;
     const act = btn.dataset.act;
-    const minInput = roundNum==='1' ? $('#admin-r1-min') : $('#admin-r2-min');
-    if(act==='start'){
-      const mins = parseFloat(minInput.value) || 10;
-      const existing = await getTimerState(roundNum);
-      let durationSec = mins*60;
-      if(existing && existing.remainingAtPause!==undefined && !existing.running){
-        durationSec = existing.remainingAtPause;
-      }
-      await storage.set('timer:round'+roundNum, JSON.stringify({running:true, startedAt: Date.now(), durationSec}), true);
-      showToast("Timer Ronde "+roundNum+" dimulai");
-    } else if(act==='pause'){
-      const t = await getTimerState(roundNum);
-      if(t && t.running){
-        const elapsed = (Date.now()-t.startedAt)/1000;
-        const remaining = Math.max(0, t.durationSec - elapsed);
-        await storage.set('timer:round'+roundNum, JSON.stringify({running:false, remainingAtPause: remaining}), true);
-        showToast("Timer Ronde "+roundNum+" dijeda");
-      }
-    } else if(act==='reset'){
-      await storage.set('timer:round'+roundNum, JSON.stringify({running:false, remainingAtPause:0}), true);
-      showToast("Timer Ronde "+roundNum+" direset");
-    }
-    refreshTimerDisplay();
+    if(act==='start') await startRoundTimer(roundNum);
+    else if(act==='pause') await pauseRoundTimer(roundNum);
+    else if(act==='reset') await resetRoundTimer(roundNum);
   });
 });
+
+/* ---------- PROJECTOR MINI TIMER CONTROLS ---------- */
+$('#proj-btn-start-r1').addEventListener('click', async ()=>{ await startRoundTimer(1); loadProjectorScreen(); });
+$('#proj-btn-pause').addEventListener('click', async ()=>{
+  const t1 = await getTimerState(1), t2 = await getTimerState(2);
+  if(t2 && t2.running) await pauseRoundTimer(2);
+  else await pauseRoundTimer(1);
+  loadProjectorScreen();
+});
+$('#proj-btn-start-r2').addEventListener('click', async ()=>{ await startRoundTimer(2); loadProjectorScreen(); });
 
 $('#btn-open-projector').addEventListener('click', ()=>{
   try{
